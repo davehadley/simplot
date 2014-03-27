@@ -1,4 +1,3 @@
-import ROOT # @UnresolvedImport
 import numpy
 
 class Binning:
