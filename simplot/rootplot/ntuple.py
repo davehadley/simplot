@@ -4,6 +4,8 @@ import numpy
 import operator
 import os
 import glob
+from simplot import progress
+import sys
 
 ###############################################################################
 
@@ -170,15 +172,19 @@ class Algorithm(object):
     '''Define the interface for algorithms applied to ROOT tree by the ProcessTree runnable.'''
     
     def begin(self):
+        '''Called once at the beginning of process.'''
         pass
     
     def file(self, tfile):
+        '''Called once each time a new file is loaded.'''
         pass
     
     def event(self, event):
+        '''Called once each time a new event is loaded.'''
         pass
     
-    def end(self, end):
+    def end(self):
+        '''Called once at the end of processing.'''
         pass
 
 ###############################################################################
@@ -206,6 +212,20 @@ class AlgorithmList(Algorithm):
 
 ###############################################################################
 
+class ClearCaches(Algorithm):
+    def __init__(self, caches):
+        self._caches = list(caches)
+        for c in caches:
+            if not callable(getattr(c, "clear", default=None)):
+                raise Exception("ClearCaches requires that all input arguments have a method \"clear\".", c)
+    
+    def event(self, event):
+        for c in self._caches:
+            c.clear()
+
+
+###############################################################################
+
 class TreeFillerAlgorithm(Algorithm):
     
     def __init__(self, outfilename, treename, branches):
@@ -218,7 +238,7 @@ class TreeFillerAlgorithm(Algorithm):
     def begin(self):
         self._outfile = ROOT.TFile(self._outfilename, "RECREATE")
         self._outtree = ROOT.TTree(self._outtreename, self._outtreename)
-        for b in self._branches:
+        for b in sorted(self._branches, key=operator.attrgetter("name")):
             b.createbranch(self._outtree)
         return
 
@@ -246,28 +266,115 @@ class FileObjectGetter:
 
 ###############################################################################
 
-class ProcessTree:
-    def __init__(self, infilelist, treename, alg):
+class ProcessTree(object):
+    def __init__(self, infilelist, treename, alg, n_max=None):
         '''Iterates over the input tree and applies the provided algorithm.
         '''
         self._filelist = _expand_file_patterns(infilelist)
         self._alg = alg
+        self._treename = treename
         self._tree_getter = FileObjectGetter(treename)
+        self._n_max = n_max
         return
     
     def run(self):
         self._alg.begin()
+        #calculate the total number of events to be processed
+        self._total_num_events()
+        iterable = progress.printprogress("ProcessTree "+self._treename, 
+                                               self._total_num_events(), 
+                                               self._iterable(), 
+                                               update=True
+                                        )
+        #only process the required number of events
+        n_max = self._n_max
+        if n_max is not None:
+            if n_max > 0:
+                for i, val in enumerate(iterable):
+                    #exit if we have done enough events
+                    if i >= n_max:
+                        break
+        else:
+            for i in iterable:
+                #do every event
+                pass
+        return
+    
+    def _iterable(self):
         for tfile in _iter_root_files(self._filelist):
             self._alg.file(tfile)
             tree = self._tree_getter(tfile)
             for event in tree:
-                self._alg.event(event)
+                yield self._alg.event(event)
+        self._alg.end()
+        return
+    
+    def _total_num_events(self):
+        nevents = 0
+        for tfile in _iter_root_files(self._filelist):
+            tree = self._tree_getter(tfile)
+            nevents += tree.GetEntries()
+        return nevents
+
+
+###############################################################################
+
+class ProcessTreeSubset(ProcessTree):
+    def __init__(self, infilelist, treename, alg, cutstr, n_max=None):
+        '''Iterates over the input tree and applies the provided algorithm.
+        Only events that pass the cut will be processed.
+        '''
+        super(ProcessTreeSubset, self).__init__(infilelist, treename, alg, n_max=n_max)
+        self._cutstr = cutstr
+        return
+
+    def run(self):
+        self._alg.begin()
+        if len(self._filelist)>1:
+            #more than one file, progress display will show an entry for each event.
+            iterable = progress.printprogress("ProcessTreeSubset "+self._treename, 
+                                               len(self._filelist), 
+                                               self._filelist, 
+                                               update=True
+                                        )
+        else:
+            #special case for just 1 input file, progress display will show per event information
+            iterable = self._filelist
+        n_max = self._n_max
+        if n_max is None:
+            n_max = float("inf")
+        count = 0
+        self._alg.begin()
+        for tfile in _iter_root_files(iterable):
+            self._alg.file(tfile)
+            tree = self._tree_getter(tfile)
+            ret = tree.Draw(">>elist", self._cutstr)
+            if ret < 0:
+                raise Exception("ProcessTreeSubset failed to get an event list. This is usually because the cut string is invalid.", self._cutstr)
+            eventlist = ROOT.gDirectory.Get("elist")
+            eventlistiterable = xrange(eventlist.GetN()) 
+            if len(self._filelist)<=1:
+                eventlistiterable = progress.printprogress("ProcessTreeSubset "+self._treename, 
+                                               eventlist.GetN(), 
+                                               eventlistiterable, 
+                                               update=True
+                                        )
+            for index_el in eventlistiterable:
+                eventnum = eventlist.GetEntry(index_el)
+                if eventnum > -1: # -1 is a failure code for TEventList::GetEntry
+                    if count >= n_max:
+                        break
+                    count += 1
+                    tree.GetEntry(eventnum)
+                    self._alg.event(tree)
+            if count >= n_max:
+                break
         self._alg.end()
         return
 
 ###############################################################################
 
-class BranchFiller:
+class BranchFiller(object):
     def __init__(self, name, function, start_value=0.0, ):
         '''BranchFiller handles setting branch values on each event and is designed to be provided to a TreeFillerAlgorithm.
         The required arguments are the name of the output branch and a callable object 
@@ -275,7 +382,7 @@ class BranchFiller:
         Alternatively, function if is a string, a simple attribute getter is constructed with it. 
         Optionally the start_value can be set.
         '''
-        self._name = name
+        self.name = name
         self._start_value = start_value
         self._branch = None
         if isinstance(function, str):
@@ -285,11 +392,54 @@ class BranchFiller:
             raise Exception("BranchFiller given a non-callable function object.")
     
     def createbranch(self, tree):
-        self._branch = BranchPrimitive(name=self._name, tree=tree, start=self._start_value)
+        self._branch = BranchPrimitive(name=self.name, tree=tree, start=self._start_value)
         return
     
     def event(self, event):
-        self._branch.setvalue(self._function(event))
+        try:
+            val = self._eval(event)
+        except Exception as ex:
+            self._handle_exception("BranchFiller failed to evaluate function", ex)
+        #Sometimes setting fails due to a bug in the above function.
+        #for example if the wrong type is returned.
+        try:
+            self._branch.setvalue(val)
+        except Exception as ex:
+            self._handle_exception("BranchFiller failed to set branch value", ex, val)
+            
+    
+    def _handle_exception(self, msg, ex, val=None):
+        #get the exception information
+        exc_info = sys.exc_info()
+        #repackage the 
+        if val is None:
+            exinst = exc_info[0](msg, 
+                             self.name,
+                             exc_info[1],
+                             )
+        else:
+            exinst = exc_info[0](msg, 
+                             self.name, 
+                             val, 
+                             type(val), 
+                             exc_info[1],
+                             )
+        #re-raise the re-packaged exception
+        raise exinst, None, exc_info[2]
+    
+    def _eval(self, event):
+        return self._function(event)
+
+###############################################################################
+
+class BranchObjectFiller(BranchFiller):
+    def __init__(self, name, function, cls, start_value=None):
+        super(BranchObjectFiller, self).__init__(name, function, start_value=start_value)
+        self._cls = cls
+
+    def createbranch(self, tree):
+        self._branch = BranchObject(ObjectType=self._cls, name=self.name, tree=tree, start=self._start_value)
+        return
 
 ###############################################################################
 
