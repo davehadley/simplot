@@ -2,10 +2,10 @@
 
 """
 
-import simplot.rootplot.drawoptions as drawoptions
-import simplot.rootplot.drawtools as drawtools
-import simplot.rootplot.rootio as rootio
-import simplot.rootplot.ntuple as ntuple
-import simplot.rootplot.palette as palette
-import simplot.rootplot.style as style
-import simplot.rootplot.table as table
+import drawoptions
+import drawtools
+import rootio
+import ntuple
+import palette
+import style
+import table
