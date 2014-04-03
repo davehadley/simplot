@@ -2,6 +2,9 @@
 
 """
 
+import ROOT#@UnresolvedImport
+ROOT.PyConfig.IgnoreCommandLineOptions = True # Prevent ROOT from hi-jacking --help
+
 import drawoptions
 import drawtools
 import rootio
