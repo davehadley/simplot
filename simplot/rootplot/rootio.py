@@ -3,7 +3,7 @@ import ROOT # @UnresolvedImport
 
 class CanvasWriter:
 
-    def __init__(self, path="./", extensions=["png","eps", "C"], debug=False):
+    def __init__(self, path="./", extensions=["png","eps", "C"], verbose=True, debug=False):
         """
         :param _path: output directory to store plots (created if it does not exist). Plots are stored in sub directories by file extension eg _path/png
         :type _path: str
@@ -16,6 +16,7 @@ class CanvasWriter:
         self._setext(extensions)
         self._normal_error_ignore_level = ROOT.kInfo
         self._debug = debug
+        self._verbose = verbose
         
     def _setext(self, ext):
         self._extensions = ext
@@ -27,6 +28,8 @@ class CanvasWriter:
         for canv in canvases:
             if self._debug:
                 print "CanvasWriter(canv:", canv, ", _path:", self._path, ", extensions:", self._extensions, ")"
+            if self._verbose:
+                print "saving plot", canv.GetName()
             self._silence_root()
             try: 
                 iter(canv);
