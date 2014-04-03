@@ -191,6 +191,14 @@ class SplitDataset:
             cut = Cut(cut)
         self.nameList.append(name)
         self.cuts[name] = cut
+    
+    @classmethod
+    def from_integer_map(cls, varname, map):
+        '''Requires input which dictionary of category names mapped to integer values.'''
+        cuts = dict()
+        for key, val in map.iteritems():
+            cuts[key] = "{0}=={1}".format(varname, val)
+        return SplitDataset(cuts)
         
     def getNames(self):
         """
