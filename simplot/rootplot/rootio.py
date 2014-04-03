@@ -3,7 +3,7 @@ import ROOT # @UnresolvedImport
 
 class CanvasWriter:
 
-    def __init__(self, path="./", extensions=["png","eps"], debug=False):
+    def __init__(self, path="./", extensions=["png","eps", "C"], debug=False):
         """
         :param _path: output directory to store plots (created if it does not exist). Plots are stored in sub directories by file extension eg _path/png
         :type _path: str
@@ -41,7 +41,12 @@ class CanvasWriter:
                         except OSError:
                             pass #error thrown if directory already exists, but this is fine. 
                         if self._debug:
-                            print "saving ",c,"to",fname                       
+                            print "saving ",c,"to",fname
+                        if ext.upper() == "C":
+                            #special case, rename the object so that it is valid c++
+                            name = c.GetName()
+                            name = name.replace("/", "_")
+                            c.SetName(name)
                         c.SaveAs(fname)
             self._unsilence_root()
             
