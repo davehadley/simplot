@@ -445,6 +445,29 @@ class BaseBinning:
     def highBound(self):
         return self.rooBinning.highBound()
 
+class AutoBinning(BaseBinning):
+    
+    def __init__(self, nbins):
+        self._nbins = nbins
+    
+    def getBinningArray(self):
+        """
+        :returns: a c-style array containing the bin edges.
+        """
+        return None
+        
+    def getNBins(self):
+        """
+        :returns: integer number of bins
+        """
+        return self._nbins
+    
+    def lowBound(self):
+        return None
+    
+    def highBound(self):
+        return None
+
 class UniformBinning(BaseBinning):
     """Draw option to set uniform histogram binning.
     """
@@ -832,6 +855,12 @@ class Normalisation:
     
     def getMode(self):
         return self.mode
+
+###############################################################################
+
+class ShowOverflow:
+    def __init__(self, flag):
+        self.flag = flag
 
 ###############################################################################    
     

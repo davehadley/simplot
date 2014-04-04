@@ -216,8 +216,8 @@ class TreePainter:
         for name,splitCut in splitDataset:
             histogram = None
             #histName = "hDummy"
-            histName = "hist_" + str(uuid.uuid4()).replace("-","_") 
-            if binning:
+            histName = "hist_" + str(uuid.uuid4()).replace("-","_")
+            if binning and binning.getBinningArray():
                 nBins = binning.getNBins()
                 array = binning.getBinningArray()
                 histogram = ROOT.TH1D(histName,title,nBins,array)
@@ -245,6 +245,8 @@ class TreePainter:
                 fullCut = ews
             #create histogram by calling the tree Draw command
             fullCommand = command + ">>" + histName
+            if isinstance(binning, drawoptions.AutoBinning):
+                fullCommand += "({0})".format(binning.getNBins())
             self.dummyCanv.cd()
             self.tree.Draw(fullCommand, fullCut)
             if not histogram:
@@ -256,8 +258,8 @@ class TreePainter:
             #store the histogram in histogram collection
             histogram.SetDirectory(0)
             histogram.Sumw2()
-            histCol.addHistogram(name,histogram) 
-            if not binning:
+            histCol.addHistogram(name,histogram)
+            if (not binning) or isinstance(binning, drawoptions.AutoBinning):
                 #binning not set, try to automatically set it from this
                 nBins = histogram.GetNbinsX()
                 boundaries = numpy.zeros(nBins+1)
@@ -631,6 +633,7 @@ class HistogramCollectionPainter:
         #store a reference of the options in this class so we don't have to pass 
         #them to every method
         self.options = options
+        self._handleOverflow()
         self._normaliseHistograms()
         self._buildHistogramsStackMC()
         self._calculateFrameLimits()
@@ -660,6 +663,22 @@ class HistogramCollectionPainter:
         if axisScale.isLogZ():
             self.canv.SetLogz(1)
         self.frame = frame
+        return
+    
+    def _handleOverflow(self):
+        showopt = self._findOption(drawoptions.ShowOverflow, default=drawoptions.ShowOverflow(False))
+        if showopt.flag:
+            for k,h in self.histCol:
+                if h.GetDimension()==1: #only implemented for 1D histograms
+                    underflow = h.GetBinContent(0)
+                    overflow = h.GetBinContent(h.GetNbinsX()+1)
+                    firstbin = h.GetBinContent(1)
+                    lastbin = h.GetBinContent(h.GetNbinsX())
+                    h.SetBinContent(1, underflow + firstbin)
+                    h.SetBinContent(h.GetNbinsX(), overflow + lastbin)
+                    h.SetBinContent(0, 0.0)
+                    h.SetBinContent(h.GetNbinsX()+1, 0.0)
+                    #TODO : implement errors
         return
     
     def _normaliseHistograms(self):
