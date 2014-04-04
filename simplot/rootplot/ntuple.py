@@ -266,6 +266,14 @@ class FileObjectGetter:
 
 ###############################################################################
 
+class FileObjectTupleGetter:
+    def __init__(self, *args):
+        self._names = args
+    def __call__(self, tfile):
+        return tuple(tfile.Get(name) for name in self._names)
+
+###############################################################################
+
 class ProcessTree(object):
     def __init__(self, infilelist, treename, alg, n_max=None):
         '''Iterates over the input tree and applies the provided algorithm.
@@ -316,6 +324,25 @@ class ProcessTree(object):
             nevents += tree.GetEntries()
         return nevents
 
+###############################################################################
+
+class ProcessParallelTrees(ProcessTree):
+    def __init__(self, infilelist, treenamelist, alg, n_max=None):
+        '''Iterates over several input trees within the same file.
+        '''
+        treename = treenamelist[0]
+        super(ProcessTreeSubset, self).__init__(infilelist, treename, alg, n_max=n_max)
+        self._treenamelist = treenamelist
+        self._tree_getter = itertools.izip(FileObjectTupleGetter(*treenamelist))
+    
+    def _iterable(self):
+        for tfile in _iter_root_files(self._filelist):
+            self._alg.file(tfile)
+            treetuple = self._tree_getter(tfile)
+            for event in itertools.izip(*treetuple):
+                yield self._alg.event(event)
+        self._alg.end()
+        return
 
 ###############################################################################
 
