@@ -25,33 +25,39 @@ class CanvasWriter:
         self._path = os.path.expanduser(path)
         
     def save(self, *canvases):
-        for canv in canvases:
-            if self._debug:
-                print "CanvasWriter(canv:", canv, ", _path:", self._path, ", extensions:", self._extensions, ")"
-            if self._verbose:
-                print "saving plot", canv.GetName()
-            self._silence_root()
-            try: 
-                iter(canv);
-            except TypeError: 
-                canv = [canv] #put inside list
-            for c in canv:
-                for ext in self._extensions:
-                    if c:
-                        fname = self._path+"/"+ext+"/"+c.GetName() + "." + ext
-                        try:
-                            os.makedirs(os.path.dirname(fname))
-                        except OSError:
-                            pass #error thrown if directory already exists, but this is fine. 
-                        if self._debug:
-                            print "saving ",c,"to",fname
-                        if ext.upper() == "C":
-                            #special case, rename the object so that it is valid c++
-                            name = c.GetName()
-                            name = name.replace("/", "_")
-                            c.SetName(name)
-                        c.SaveAs(fname)
-            self._unsilence_root()
+        for it in canvases:
+            try:
+                iterable = iter(it)
+            except TypeError:
+                #input is not interable, assume that it is just a single canvas
+                iterable = [it]
+            for canv in iterable:
+                if self._debug:
+                    print "CanvasWriter(canv:", canv, ", _path:", self._path, ", extensions:", self._extensions, ")"
+                if self._verbose:
+                    print "saving plot", canv.GetName()
+                self._silence_root()
+                try: 
+                    iter(canv);
+                except TypeError: 
+                    canv = [canv] #put inside list
+                for c in canv:
+                    for ext in self._extensions:
+                        if c:
+                            fname = self._path+"/"+ext+"/"+c.GetName() + "." + ext
+                            try:
+                                os.makedirs(os.path.dirname(fname))
+                            except OSError:
+                                pass #error thrown if directory already exists, but this is fine. 
+                            if self._debug:
+                                print "saving ",c,"to",fname
+                            if ext.upper() == "C":
+                                #special case, rename the object so that it is valid c++
+                                name = c.GetName()
+                                name = name.replace("/", "_")
+                                c.SetName(name)
+                            c.SaveAs(fname)
+                self._unsilence_root()
             
     def _silence_root(self):
         """Prevent ROOT from printing a message everytime a plot is saved."""
