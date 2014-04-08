@@ -191,6 +191,9 @@ class Algorithm(object):
 
 class AlgorithmList(Algorithm):
     
+    class StopIteration(Exception):
+        pass
+    
     def __init__(self, algs):
         self._algs = algs
     
@@ -203,8 +206,12 @@ class AlgorithmList(Algorithm):
             a.file(tfile)
     
     def event(self, event):
-        for a in self._algs:
-            a.event(event)
+        try:
+            for a in self._algs:
+                a.event(event)
+        except AlgorithmList.StopIteration:
+            #algorithms can throw this exception to stop iterating
+            pass
     
     def end(self):
         for a in self._algs:
@@ -331,9 +338,9 @@ class ProcessParallelTrees(ProcessTree):
         '''Iterates over several input trees within the same file.
         '''
         treename = treenamelist[0]
-        super(ProcessTreeSubset, self).__init__(infilelist, treename, alg, n_max=n_max)
+        super(ProcessParallelTrees, self).__init__(infilelist, treename, alg, n_max=n_max)
         self._treenamelist = treenamelist
-        self._tree_getter = itertools.izip(FileObjectTupleGetter(*treenamelist))
+        self._tree_getter = FileObjectTupleGetter(*treenamelist)
     
     def _iterable(self):
         for tfile in _iter_root_files(self._filelist):
@@ -343,6 +350,13 @@ class ProcessParallelTrees(ProcessTree):
                 yield self._alg.event(event)
         self._alg.end()
         return
+
+    def _total_num_events(self):
+        nevents = 0
+        for tfile in _iter_root_files(self._filelist):
+            tree = self._tree_getter(tfile)[0]
+            nevents += tree.GetEntries()
+        return nevents
 
 ###############################################################################
 
