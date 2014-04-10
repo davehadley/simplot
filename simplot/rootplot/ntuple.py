@@ -282,7 +282,7 @@ class FileObjectTupleGetter:
 ###############################################################################
 
 class ProcessTree(object):
-    def __init__(self, infilelist, treename, alg, n_max=None):
+    def __init__(self, infilelist, treename, alg, n_max=None, usefasttree=True):
         '''Iterates over the input tree and applies the provided algorithm.
         '''
         self._filelist = _expand_file_patterns(infilelist)
@@ -290,6 +290,7 @@ class ProcessTree(object):
         self._treename = treename
         self._tree_getter = FileObjectGetter(treename)
         self._n_max = n_max
+        self._usefasttree = usefasttree
         return
     
     def run(self):
@@ -319,6 +320,8 @@ class ProcessTree(object):
         for tfile in _iter_root_files(self._filelist):
             self._alg.file(tfile)
             tree = self._tree_getter(tfile)
+            if self._usefasttree:
+                tree = FastTree(tree)
             for event in tree:
                 yield self._alg.event(event)
         self._alg.end()
@@ -346,6 +349,8 @@ class ProcessParallelTrees(ProcessTree):
         for tfile in _iter_root_files(self._filelist):
             self._alg.file(tfile)
             treetuple = self._tree_getter(tfile)
+            if self._usefasttree:
+                treetuple = tuple(FastTree(tree) for tree in treetuple)
             for event in itertools.izip(*treetuple):
                 yield self._alg.event(event)
         self._alg.end()
@@ -357,6 +362,30 @@ class ProcessParallelTrees(ProcessTree):
             tree = self._tree_getter(tfile)[0]
             nevents += tree.GetEntries()
         return nevents
+
+###############################################################################
+
+class FastTree(object):
+    '''Lazilly enable branches as they are used.
+    This prevents loading unused data. This will be slower than a regular tree
+     in cases where most or all branches are used.
+    '''   
+    def __init__(self, tree, enablebranches=[]):
+        self._tree = tree
+        self._tree.SetBranchStatus("*", 0)
+        for name in enablebranches:
+            self._tree.SetBranchStatus(name, 1)
+        self._counter = 0
+
+    def __getattr__(self, name):
+        try:
+            return getattr(self._tree, name)
+        except AttributeError:
+            if object._tree.FindBranch(name):
+                self._tree.SetBranchStatus(name, 1)
+                return getattr(object._tree, name)
+            else:
+                raise
 
 ###############################################################################
 
@@ -389,10 +418,10 @@ class ProcessTreeSubset(ProcessTree):
         for tfile in _iter_root_files(iterable):
             self._alg.file(tfile)
             tree = self._tree_getter(tfile)
-            ret = tree.Draw(">>elist", self._cutstr)
-            if ret < 0:
-                raise Exception("ProcessTreeSubset failed to get an event list. This is usually because the cut string is invalid.", self._cutstr)
-            eventlist = ROOT.gDirectory.Get("elist")
+            eventlist = self._create_eventlist(tree)
+            if self._usefasttree:
+                #use after create event list, as the Draw command may fail otherwise.
+                tree = FastTree(tree)
             eventlistiterable = xrange(eventlist.GetN()) 
             if len(self._filelist)<=1:
                 eventlistiterable = progress.printprogress("ProcessTreeSubset "+self._treename, 
@@ -406,12 +435,24 @@ class ProcessTreeSubset(ProcessTree):
                     if count >= n_max:
                         break
                     count += 1
-                    tree.GetEntry(eventnum)
+                    self._load_event_from_ttree(tree, eventnum)
                     self._alg.event(tree)
             if count >= n_max:
                 break
         self._alg.end()
         return
+    
+    def _load_event_from_ttree(self, tree, eventnum):
+        #separating this out into a separate function makes it more 
+        #obvious where time is being spent when profiling code.
+        return tree.GetEntry(eventnum)
+    
+    def _create_eventlist(self, tree):
+        ret = tree.Draw(">>elist", self._cutstr)
+        if ret < 0:
+            raise Exception("ProcessTreeSubset failed to get an event list. This is usually because the cut string is invalid.", self._cutstr)
+        eventlist = ROOT.gDirectory.Get("elist")
+        return eventlist
 
 ###############################################################################
 
