@@ -337,11 +337,11 @@ class ProcessTree(object):
 ###############################################################################
 
 class ProcessParallelTrees(ProcessTree):
-    def __init__(self, infilelist, treenamelist, alg, n_max=None):
+    def __init__(self, infilelist, treenamelist, alg, n_max=None, usefasttree=True):
         '''Iterates over several input trees within the same file.
         '''
         treename = treenamelist[0]
-        super(ProcessParallelTrees, self).__init__(infilelist, treename, alg, n_max=n_max)
+        super(ProcessParallelTrees, self).__init__(infilelist, treename, alg, n_max=n_max, usefasttree=usefasttree)
         self._treenamelist = treenamelist
         self._tree_getter = FileObjectTupleGetter(*treenamelist)
     
@@ -373,28 +373,42 @@ class FastTree(object):
     def __init__(self, tree, enablebranches=[]):
         self._tree = tree
         self._tree.SetBranchStatus("*", 0)
+        self._encountered = set()
         for name in enablebranches:
-            self._tree.SetBranchStatus(name, 1)
-        self._counter = 0
+            self._encountered.add(name)
+            self._enablebranch(name)
+
+    def _enablebranch(self, name):
+        self._tree.SetBranchStatus(name, 1)
+        #self._tree.ResetBranchAddresses()
+        return 
 
     def __getattr__(self, name):
-        try:
+        if name in self._encountered:
             return getattr(self._tree, name)
-        except AttributeError:
-            if object._tree.FindBranch(name):
+        else:
+            self._encountered.add(name)
+            if self._tree.FindBranch(name):
+                self._enablebranch(name)
                 self._tree.SetBranchStatus(name, 1)
-                return getattr(object._tree, name)
-            else:
-                raise
+            return getattr(self._tree, name)
+
+    def __iter__(self):
+        i = 0
+        tree = self._tree
+        n = tree.GetEntries()
+        for i in xrange(n):
+            tree.GetEntry(i)
+            yield self
 
 ###############################################################################
 
 class ProcessTreeSubset(ProcessTree):
-    def __init__(self, infilelist, treename, alg, cutstr, n_max=None):
+    def __init__(self, infilelist, treename, alg, cutstr, n_max=None, usefasttree=True):
         '''Iterates over the input tree and applies the provided algorithm.
         Only events that pass the cut will be processed.
         '''
-        super(ProcessTreeSubset, self).__init__(infilelist, treename, alg, n_max=n_max)
+        super(ProcessTreeSubset, self).__init__(infilelist, treename, alg, n_max=n_max, usefasttree=usefasttree)
         self._cutstr = cutstr
         return
 
