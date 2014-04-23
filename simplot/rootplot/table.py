@@ -4,104 +4,213 @@ import pprint
 import itertools
 import os
 
-#import prettytable
+import prettytable
+
+###############################################################################
+
+class StringFormatter:
+    def __init__(self, fstr):
+        self._fstr = fstr
+    def __call__(self, entry):
+        return self._fstr.format(entry)
+
+_defaultformatter = StringFormatter("{:.2g}")
 
 ###############################################################################
 
 class Table:
-    def __init__(self, name):
-        self.name = name
-        self.setHeaderRow(None)
-        self.rows = []
-        self.setFloatingPointFormatString("{:.2g}")
-        
-    def setFloatingPointFormatString(self, formatStr):
-        self.floatingPointFormatString = formatStr
-    
-    def setHeaderRow(self, headerRow):
-        self.headerRow = None
+    def __init__(self, name, headrow):
+        self._name = name
+        self._headrow = None
+        self._setheadrow(headrow)
+        self._rows = []
+            
+    def _setheadrow(self, headrow):
         #ensure that header row is all strings
-        if headerRow is not None:
-            self.headerRow = [str(e) for e in headerRow]
+        if headrow is not None:
+            headrow = [str(e) for e in headrow]
+        self._headrow = headrow
+        return
         
-    def addRow(self, row):
-        self.rows.append(row)
+    def addrow(self, row):
+        self._rows.append(row)
     
-    def getNRows(self):
-        nRows = len(self.rows)
-        return nRows
+    def get_nrows(self):
+        return len(self._rows)
     
-    def getNCols(self):
-        nCols = max( (len(l) for l in self.rows) )
-        return nCols
+    def get_ncols(self):
+        return max( (len(l) for l in self._rows) )
     
-    def hasRowLabels(self):
-        return any((len(r)>0 and type(r[0]) is str for r in self.rows))
+    def _hasrowlabels(self):
+        return any( (len(r)>0 and type(r[0]) is str for r in self._rows) )
         
     @staticmethod
-    def tableFromDictionary(name, container, headerRow=None):
-        table = Table(name)
-        if headerRow:
-            table.setHeaderRow(headerRow)
-        for key in sorted(container.keys()):
-            row = container[key]
-            inputRow = [key] + row
-            table.addRow(inputRow)
+    def tablefromdict(name, container, headrow=None):
+        table = Table(name, headrow=headrow)
+        if headrow:
+            table._setheadrow(headrow)
+        for key, row in container.iteritems():
+            inputrow = [key] + row
+            table.addrow(inputrow)
         return table
     
     @staticmethod
-    def tableFromMatrix(name, matrix, xLabels=None, yLabels=None):
-        nRows = matrix.GetNrows()
-        nCols = matrix.GetNcols()
-        if xLabels is None:
-            xLabels = [str(i) for i in range(nCols)]
-        if yLabels is None:
-            yLabels = [str(i) for i in range(nRows)]
-        tab = Table(name)
-        tab.setHeaderRow(yLabels)
-        for j in xrange(nRows):
-            row = [ xLabels[j] ]
-            for i in xrange(nCols):
+    def tablefrommatrix(name, matrix, xlabels=None, ylabels=None):
+        nrows = matrix.GetNrows()
+        ncols = matrix.GetNcols()
+        if xlabels is None:
+            xlabels = [str(i) for i in range(ncols)]
+        if ylabels is None:
+            ylabels = [str(i) for i in range(nrows)]
+        tab = Table(name, headrow=ylabels)
+        for j in xrange(nrows):
+            row = [ xlabels[j] ]
+            for i in xrange(ncols):
                 v = matrix[i][j]
                 row.append(v)
-            tab.addRow(row)
+            tab.addrow(row)
         return tab
+
+    def __str__(self):
+        return "Table("+self.name+")"
     
-    def writeLatexTable(self, fileName):
+###############################################################################
+
+class TableOutputBase(object):
+    def __init__(self, formatter):
+        if formatter is None:
+            formatter = _defaultformatter
+        self._formatter = formatter
+    
+    def write(self, table, filename):
         try:
-            os.makedirs(os.path.dirname(fileName))
+            os.makedirs(os.path.dirname(filename))
         except os.error:
             pass
-        outFile = open(fileName,"w")
-        print >>outFile,self.getLatexTable()
-        return 
+        outfile = open(filename,"w")
+        print >>outfile,self.getstring(table)
     
-    def getLatexTable(self):
+    def getstring(self, table):
+        raise NotImplementedError("Users of this class should override this method.")
+
+    def _get_printed_head_row(self, table):
+        result = None
+        if table._headrow:
+            if len(table._headrow)==table.get_ncols()-1:
+                result = [ "" ] + table._headrow
+            else:
+                result = list(table._headrow)
+        return result
+
+    def _convert_row_to_string(self, row):
+        strRow = [self._convert_entry_to_string(v) for v in row]
+        return strRow
+
+    def _convert_entry_to_string(self, entry):
+        strValue = None
+        if isinstance(entry, basestring):
+            #already a string, copy value
+            strValue = str(entry)
+        else:
+            #not a string, try to get value and format
+            try:
+                value,error = self._get_value_and_error(entry)
+                vs = self._formatter(value)
+                es = ""
+                if error is not None:
+                    es = self._formatter(error)
+                    strValue = vs + " +- " + es
+                else:
+                    strValue = vs
+            except Exception:
+                #can't convert to string, fall back on standard python string conversion
+                strValue = str(entry)
+                raise
+        return strValue
+
+    def _get_value_and_error(self, entry):
+        value,error = None,None
+        try:
+            #is it a single number?
+            value = float(entry)
+        except:
+            try:
+                #try unpacking a tuple
+                value, error = entry
+                value = float(value)
+                error = float(error)
+            except:
+                #don't know what to do now, raise an exception
+                raise Exception("can't convert entry to value and error", entry)
+        return value, error
+
+###############################################################################
+
+class TableLatexOutput(TableOutputBase):
+    def __init__(self, formatter=None):
+        super(TableLatexOutput, self).__init__(formatter)
+        
+    def getstring(self, table):
+        return self._getlatex(table)
+    
+    def _getlatex(self, table):
         latex = StringIO.StringIO()
-        nRows = self.getNRows()
-        nCols = self.getNCols()
+        nrows = table.get_nrows()
+        ncols = table.get_ncols()
         newLine = " \\\\\n"
-        colFormat = "|".join(["c"]*nCols)
+        colformat = "|".join(["c"]*ncols)
         print >>latex,"{"
         print >>latex,"%\\tiny" 
-        print >>latex,"\\begin{tabular}{"+colFormat+"}"
-        allData = [self._getPrintedHeaderRow()]+self.rows
+        print >>latex,"\\begin{tabular}{"+colformat+"}"
+        hrow = self._get_printed_head_row(table)
+        if hrow:
+            allData = [hrow]+self.rows
+        else:
+            allData = table._rows
         for row in allData:
-            strRow = self._convertRowToString(row)
-            strRow = self._sanitiseLatexRow(strRow)
+            strRow = self._convert_row_to_string(row)
+            strRow = self._sanitise_latex_row(strRow)
             line = " & ".join(strRow) + newLine
             print >>latex,line,
         print >>latex,"\\end{tabular}"
         print >>latex,"}" 
         return latex.getvalue()
     
-    def getAsciiTable(self):
-        pt = prettytable.PrettyTable(self._getPrintedHeaderRow())
-        for row in self.rows:
-            row = [ self._convertEntryToString(n) for n in row]
+    def _sanitise_latex_row(self, row):
+        result = [self._sanitise_latex_string(entry) for entry in row]
+        return result
+    
+    def _sanitise_latex_string(self, entry):
+        result = entry
+        #deal with underscores
+        result = result.replace("\\_","_")
+        result = result.replace("_","\\_")
+        #change \pm
+        result = result.replace("+-","\\ensuremath{\\pm}")
+        return result
+
+###############################################################################
+
+class TableAsciiOutput(TableOutputBase):
+    def __init__(self, formatter=None):
+        super(TableAsciiOutput, self).__init__(formatter)
+        
+    def getstring(self, table):
+        return self._get_ascii_table(table)
+
+    def _get_ascii_table(self, table):
+        pt = prettytable.PrettyTable(self._get_printed_head_row(table))
+        for row in table._rows:
+            row = [ self._convert_entry_to_string(n) for n in row]
             pt.add_row(row)
         return str(pt)
-    
+
+###############################################################################
+
+class TableHistogramOutput:
+    def __init__(self, formatter=None):
+        super(TableHistogramOutput, self).__init__(formatter)
+
     def drawColzPlot(self, minZ=None, maxZ=None, textFormat=None):
         name = self.name
         canv = ROOT.TCanvas(name,name,800,600)
@@ -153,86 +262,6 @@ class Table:
             #ROOT.gStyle.SetPaintTextFormat(startingTextFormat)
             pass
         return canv
-    
-    def prettyString(self):
-        stream = StringIO.StringIO()
-        print >>stream,"---- Table(",self.name,") ----"
-        headerRow = self._getPrintedHeaderRow()
-        allData = [headerRow]
-        for row in self.rows:
-            allData.append( self._convertRowToString(row) )
-        pprint.pprint(allData, stream=stream, indent=2)
-        return stream.getvalue()
-    
-    def prettyPrint(self):
-        print self.prettyString()
-        
-    def __str__(self):
-        return "Table("+self.name+")"
-    
-    def _getPrintedHeaderRow(self):
-        result = None
-        if len(self.headerRow)==self.getNCols()-1:
-            result = [ "" ] + self.headerRow
-        else:
-            result = list(self.headerRow)
-        return result
-    
-    def _convertRowToString(self, row):
-        strRow = [self._convertEntryToString(v) for v in row]
-        return strRow
-
-    def _convertEntryToString(self, entry):
-        strValue = None
-        if isinstance(entry, basestring):
-            #already a string, copy value
-            strValue = str(entry)
-        else:
-            #not a string, try to get value and format
-            try:
-                value,error = self._getValueAndError(entry)
-                vs = self.floatingPointFormatString.format(value)
-                es = ""
-                if error is not None:
-                    es = self.floatingPointFormatString.format(error)
-                    strValue = vs + " +- " + es
-                else:
-                    strValue = vs
-            except:
-                #can't convert to string, fall back on standard python string conversion
-                strValue = str(entry)
-        return strValue
-    
-    def _getValueAndError(self, entry):
-        value,error = None,None
-        try:
-            #is it a single number?
-            value = float(entry)
-        except:
-            try:
-                #try unpacking a tuple
-                value,error = entry
-                value = float(value)
-                error = float(error)
-            except:
-                #don't know what to do now, raise an exception
-                raise Exception("can't convert entry to value and error",entry)
-        return value,error
-    
-    def _sanitiseLatexRow(self, row):
-        result = [self._sanitiseLatexString(entry) for entry in row]
-        return result
-    
-    def _sanitiseLatexString(self, entry):
-        result = entry
-        #deal with underscores
-        result = result.replace("\\_","_")
-        result = result.replace("_","\\_")
-        #change \pm
-        result = result.replace("+-","\\ensuremath{\\pm}")
-        return result
-    
-
 
 ###############################################################################
 
@@ -245,7 +274,7 @@ def unitTest():
     for ir,rn in enumerate(rowNames):
         r1[rn] = [ float(ir+1)+float(ic+1)/10.0 for ic,n in enumerate(colNames) ]
     #create the table
-    table = Table.tableFromDictionary("table_unitTest", r1, headerRow = colNames)
+    table = Table.tablefromdict("table_unitTest", r1, headerRow = colNames)
     canv = table.drawColzPlot()
     canv.SaveAs(canv.GetName()+".eps")
     print table.getLatexTable()
