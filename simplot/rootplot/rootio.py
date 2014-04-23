@@ -1,5 +1,7 @@
 import os
 import ROOT # @UnresolvedImport
+import itertools
+import simplot.table
 
 class CanvasWriter:
 
@@ -69,3 +71,80 @@ class CanvasWriter:
         """Undo _silenceRoot."""
         if not self._debug:
             ROOT.gErrorIgnoreLevel = self._normal_error_ignore_level
+            
+
+###############################################################################
+
+class TableHistogramOutput(simplot.table.TableOutputBase):
+    def __init__(self, formatter=None):
+        super(TableHistogramOutput, self).__init__(formatter)
+    
+    def write(self, table, filename):
+        try:
+            os.makedirs(os.path.dirname(filename))
+        except os.error:
+            pass
+        self._savecanvas(table, filename)
+        return
+    
+    def _savecanvas(self, table, filename, textformat=None):
+        canv = ROOT.TCanvas(table.get_name(), table.get_name(), 800, 600)
+        if textformat:
+            startingTextFormat = ROOT.gStyle.GetPaintTextFormat()
+            ROOT.gStyle.SetPaintTextFormat(textformat)
+        hist = self._colz_plot(table)
+        hist.Draw("COLZ,TEXT")
+        canv.SaveAs(filename)
+        if textformat:
+            ROOT.gStyle.SetPaintTextFormat(startingTextFormat)
+        return
+
+    def _hasrowlabels(self, table):
+        return any( (len(r)>0 and type(r[0]) is str for r in table.get_rows()) )
+
+    def _colz_plot(self, table, minZ=None, maxZ=None):
+        name = table.get_name()
+        nRows = table.get_nrows()
+        nCols = table.get_ncols()
+        hasRowLabels = self._hasrowlabels(table)
+        nY = nRows
+        nX = nCols
+        if hasRowLabels:
+            nX = nCols - 1
+        hist = ROOT.TH2F("hist"+name,"",nX,0,nX,nY,0,nY)
+        hist.SetDirectory(0)
+        autoMax = minZ
+        rows = table.get_rows()
+        for iX, iY in itertools.product(range(nX),range(nY)):
+            if hasRowLabels:
+                indexX = iX + 1
+            else:
+                indexX = iX
+            indexY = iY
+            binX = iX + 1
+            binY = nRows - indexY
+            entry = rows[indexY][indexX]
+            #convert to floating point if we can
+            value,error = self._get_value_and_error(entry)
+            autoMax = max(value,autoMax)
+            hist.SetBinContent(binX,binY,value)
+            if error is not None:
+                hist.SetBinError(binX,binY,value)
+        #set axis labels
+        if table.get_headrow():
+            for i,xLabel in enumerate(table.get_headrow()):
+                hist.GetXaxis().SetBinLabel(i+1,xLabel)
+        if hasRowLabels:
+            for iY in xrange(nY):
+                indexY = iY
+                yLabel = rows[indexY][0]
+                binY = nRows - indexY
+                hist.GetYaxis().SetBinLabel(binY,yLabel)
+        if minZ is not None:
+            hist.SetMaximum(minZ)
+            maxZ = autoMax
+        if maxZ is not None:
+            hist.SetMaximum(maxZ)
+        return hist
+
+###############################################################################

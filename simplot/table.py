@@ -41,9 +41,15 @@ class Table:
     def get_ncols(self):
         return max( (len(l) for l in self._rows) )
     
-    def _hasrowlabels(self):
-        return any( (len(r)>0 and type(r[0]) is str for r in self._rows) )
-        
+    def get_rows(self):
+        return self._rows
+    
+    def get_headrow(self):
+        return self._headrow
+    
+    def get_name(self):
+        return self._name
+
     @staticmethod
     def tablefromdict(name, container, headrow=None):
         table = Table(name, headrow=headrow)
@@ -95,11 +101,11 @@ class TableOutputBase(object):
 
     def _get_printed_head_row(self, table):
         result = None
-        if table._headrow:
-            if len(table._headrow)==table.get_ncols()-1:
-                result = [ "" ] + table._headrow
+        if table.get_headrow():
+            if len(table.get_headrow())==table.get_ncols()-1:
+                result = [ "" ] + table.get_headrow()
             else:
-                result = list(table._headrow)
+                result = list(table.get_headrow())
         return result
 
     def _convert_row_to_string(self, row):
@@ -166,7 +172,7 @@ class TableLatexOutput(TableOutputBase):
         if hrow:
             allData = [hrow]+self.rows
         else:
-            allData = table._rows
+            allData = table.get_rows()
         for row in allData:
             strRow = self._convert_row_to_string(row)
             strRow = self._sanitise_latex_row(strRow)
@@ -200,68 +206,10 @@ class TableAsciiOutput(TableOutputBase):
 
     def _get_ascii_table(self, table):
         pt = prettytable.PrettyTable(self._get_printed_head_row(table))
-        for row in table._rows:
+        for row in table.get_rows():
             row = [ self._convert_entry_to_string(n) for n in row]
             pt.add_row(row)
         return str(pt)
-
-###############################################################################
-
-class TableHistogramOutput:
-    def __init__(self, formatter=None):
-        super(TableHistogramOutput, self).__init__(formatter)
-
-    def drawColzPlot(self, minZ=None, maxZ=None, textFormat=None):
-        name = self.name
-        canv = ROOT.TCanvas(name,name,800,600)
-        nRows = self.getNRows()
-        nCols = self.getNCols()
-        hasRowLabels = self.hasRowLabels()
-        nY = nRows
-        nX = nCols
-        if hasRowLabels:
-            nX = nCols - 1
-        hist = ROOT.TH2F("hist"+name,"",nX,0,nX,nY,0,nY)
-        hist.SetDirectory(0)
-        autoMax = minZ
-        for iX, iY in itertools.product(range(nX),range(nY)):
-            if hasRowLabels:
-                indexX = iX + 1
-            else:
-                indexX = iX
-            indexY = iY
-            binX = iX + 1
-            binY = nRows - indexY
-            entry = self.rows[indexY][indexX]
-            #convert to floating point if we can
-            value,error = self._getValueAndError(entry)
-            autoMax = max(value,autoMax)
-            hist.SetBinContent(binX,binY,value)
-            if error is not None:
-                hist.SetBinError(binX,binY,value)
-        #set axis labels
-        for i,xLabel in enumerate(self.headerRow):
-            hist.GetXaxis().SetBinLabel(i+1,xLabel)
-        if hasRowLabels:
-            for iY in xrange(nY):
-                indexY = iY
-                yLabel = self.rows[indexY][0]
-                binY = nRows - indexY
-                hist.GetYaxis().SetBinLabel(binY,yLabel)
-        if textFormat:
-            startingTextFormat = ROOT.gStyle.GetPaintTextFormat()
-            ROOT.gStyle.SetPaintTextFormat(textFormat)
-        if minZ is not None:
-            hist.SetMaximum(minZ)
-            maxZ = autoMax
-        if maxZ is not None:
-            hist.SetMaximum(maxZ)
-        hist.Draw("COLZ,TEXT")
-        self.colzPlot = hist
-        if textFormat:
-            #ROOT.gStyle.SetPaintTextFormat(startingTextFormat)
-            pass
-        return canv
 
 ###############################################################################
 
