@@ -135,7 +135,7 @@ class BranchObject:
 
 class TreeCopier:
     
-    def __init__(self,treeName,inputDataset,outputFileName):
+    def __init__(self,treeName,inputDataset,outputFileName, outputFile=None):
         self.treeName = treeName
         self.inputDataset = inputDataset
         self.outputFileName = outputFileName
@@ -144,7 +144,11 @@ class TreeCopier:
         for fileName in self.inputDataset:
             self.inputChain.AddFile(fileName)
         #create output file
-        self.outputFile = ROOT.TFile(self.outputFileName,"recreate")
+        if outputFileName:
+            self.outputFile = ROOT.TFile(self.outputFileName,"recreate")
+        else:
+            outputFile.cd()
+            self.outputFile = outputFile
         assert self.outputFile.IsOpen()
         self.outputTree = self.inputChain.CloneTree(0)
         self.outputFile.cd()
@@ -235,16 +239,23 @@ class ClearCaches(Algorithm):
 
 class TreeFillerAlgorithm(Algorithm):
     
-    def __init__(self, outfilename, treename, branches):
+    def __init__(self, outfilename, treename, branches, append=False):
         self._outfilename = outfilename
         self._outtreename = treename
         self._branches = branches
         self._outfile = None
         self._outtree = None
+        self._append = append
 
     def begin(self):
-        self._outfile = ROOT.TFile(self._outfilename, "RECREATE")
-        self._outtree = ROOT.TTree(self._outtreename, self._outtreename)
+        if self._append:
+            self._outfile = ROOT.TFile(self._outfilename, "UPDATE")
+            self._outtree = self._outfile.Get(self._outtreename)
+            if not self._outtree:
+                self._outtree = ROOT.TTree(self._outtreename, self._outtreename)
+        else:
+            self._outfile = ROOT.TFile(self._outfilename, "RECREATE")
+            self._outtree = ROOT.TTree(self._outtreename, self._outtreename)
         for b in sorted(self._branches, key=operator.attrgetter("name")):
             b.createbranch(self._outtree)
         return
@@ -521,7 +532,8 @@ class BranchFiller(object):
         try:
             val = self._eval(event)
         except Exception as ex:
-            val = 0.0
+            #use default value
+            val = self._branch.start
             if not self._ignore_errors:
                 self._handle_exception("BranchFiller failed to evaluate function", ex)
         #Sometimes setting fails due to a bug in the above function.
@@ -558,8 +570,8 @@ class BranchFiller(object):
 ###############################################################################
 
 class BranchObjectFiller(BranchFiller):
-    def __init__(self, name, function, cls, start_value=None):
-        super(BranchObjectFiller, self).__init__(name, function, start_value=start_value)
+    def __init__(self, name, function, cls, start_value=None, ignore_errors=False):
+        super(BranchObjectFiller, self).__init__(name, function, start_value=start_value, ignore_errors=ignore_errors)
         self._cls = cls
 
     def createbranch(self, tree):
