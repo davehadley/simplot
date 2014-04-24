@@ -271,6 +271,29 @@ class FileObjectGetter:
     def __call__(self, tfile):
         return tfile.Get(self._name)
 
+
+###############################################################################
+
+class FriendTreeGetter:
+    def __init__(self, treename, friendtrees):
+        self._treename = treename
+        self._friendtrees = friendtrees
+        self._friendlist = []
+
+    def __call__(self, tfile):
+        tree = tfile.Get(self._treename)
+        self._friendlist = []
+        nentries = tree.GetEntries()
+        for fn in self._friendtrees:
+            friend = tfile.Get(fn)
+            if not friend:
+                raise Exception("no tree called {}".format(fn))
+            if not nentries == friend.GetEntries():
+                raise Exception("trees have a different number of entries", self._treename, fn)
+            tree.AddFriend(friend, fn)
+            self._friendlist.append(friend)
+        return tree
+
 ###############################################################################
 
 class FileObjectTupleGetter:
@@ -282,13 +305,15 @@ class FileObjectTupleGetter:
 ###############################################################################
 
 class ProcessTree(object):
-    def __init__(self, infilelist, treename, alg, n_max=None, usefasttree=True):
+    def __init__(self, infilelist, treename, alg, n_max=None, usefasttree=True, treegetter=None):
         '''Iterates over the input tree and applies the provided algorithm.
         '''
         self._filelist = _expand_file_patterns(infilelist)
         self._alg = alg
         self._treename = treename
-        self._tree_getter = FileObjectGetter(treename)
+        if treegetter is None:
+            treegetter = FileObjectGetter(treename)
+        self._tree_getter = treegetter
         self._n_max = n_max
         self._usefasttree = usefasttree
         return
@@ -404,11 +429,11 @@ class FastTree(object):
 ###############################################################################
 
 class ProcessTreeSubset(ProcessTree):
-    def __init__(self, infilelist, treename, alg, cutstr, n_max=None, usefasttree=True):
+    def __init__(self, infilelist, treename, alg, cutstr, n_max=None, usefasttree=True, treegetter=None):
         '''Iterates over the input tree and applies the provided algorithm.
         Only events that pass the cut will be processed.
         '''
-        super(ProcessTreeSubset, self).__init__(infilelist, treename, alg, n_max=n_max, usefasttree=usefasttree)
+        super(ProcessTreeSubset, self).__init__(infilelist, treename, alg, n_max=n_max, usefasttree=usefasttree, treegetter=treegetter)
         self._cutstr = cutstr
         return
 
@@ -471,7 +496,7 @@ class ProcessTreeSubset(ProcessTree):
 ###############################################################################
 
 class BranchFiller(object):
-    def __init__(self, name, function, start_value=0.0, ):
+    def __init__(self, name, function, start_value=0.0, ignore_errors=False):
         '''BranchFiller handles setting branch values on each event and is designed to be provided to a TreeFillerAlgorithm.
         The required arguments are the name of the output branch and a callable object 
         or function that is applied to the event that returns a double.
@@ -481,6 +506,7 @@ class BranchFiller(object):
         self.name = name
         self._start_value = start_value
         self._branch = None
+        self._ignore_errors = ignore_errors
         if isinstance(function, str):
             function = operator.attrgetter(function)
         self._function = function
@@ -495,13 +521,16 @@ class BranchFiller(object):
         try:
             val = self._eval(event)
         except Exception as ex:
-            self._handle_exception("BranchFiller failed to evaluate function", ex)
+            val = 0.0
+            if not self._ignore_errors:
+                self._handle_exception("BranchFiller failed to evaluate function", ex)
         #Sometimes setting fails due to a bug in the above function.
         #for example if the wrong type is returned.
         try:
             self._branch.setvalue(val)
         except Exception as ex:
-            self._handle_exception("BranchFiller failed to set branch value", ex, val)
+            if not self._ignore_errors:
+                self._handle_exception("BranchFiller failed to set branch value", ex, val)
             
     
     def _handle_exception(self, msg, ex, val=None):
