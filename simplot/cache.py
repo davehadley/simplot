@@ -5,38 +5,27 @@ import cPickle as pickle
 
 ###############################################################################
 
-def unique_str_from_files(*filelist):
-    #join list of file names
-    uniquestr = "_".join(filelist)
-    #now get last modified time
-    uniquestr += "_".join(( str(os.path.getmtime(f)) for f in filelist ))
-    #now add the last 
-    
-    #hash the resulting string
-    uniquestr = hashlib.md5(uniquestr).hexdigest()
-    return uniquestr
-
-###############################################################################
-
-def cache(uniquestr, callable_):
+def cache(uniquestr, callable_, filelist=None):
     '''A simple interface for CacheNumpy object.
     If a cache already exists it reads it,
     otherwise is evaluates the callable_ (with no arguments)
     and expects it to return data is a form that can be written to disk. 
+    If a filelist is given, compares the file modification times to the cache file.
+    If he files have been modified since the cache was written, then the cache is overriden. 
     '''
     cn = CachePickle(uniquestr)
-    if cn.exists():
+    if cn.exists() and (filelist is None or cn.newerthan(*filelist)):
         data = cn.read()
     else:
         data = callable_()
         cn.write(data)
     return data    
 
-def cache_numpy(uniquestr, callable_):
+def cache_numpy(uniquestr, callable_, filelist=None):
     '''As cache but for numpy arrays. 
     '''
     cn = CacheNumpy(uniquestr)
-    if cn.exists():
+    if cn.exists() and (filelist is None or cn.newerthan(*filelist)):
         data = cn.read()
     else:
         data = callable_()
@@ -65,6 +54,17 @@ class Cache(object):
     
     def exists(self):
         return os.path.exists(self.tmpfilename()) 
+    
+    def newerthan(self, *filelist):
+        result = False
+        if self.exists():
+            result = True
+            cachetime = os.path.getmtime(self.tmpfilename())
+            for fname in filelist:
+                if os.path.getmtime(fname) > cachetime:
+                    #recently modified 
+                    result = False
+        return result
 
 ###############################################################################
 
