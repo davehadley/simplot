@@ -401,6 +401,33 @@ class ProcessParallelTrees(ProcessTree):
 
 ###############################################################################
 
+class ProcessFriendTrees(ProcessTree):
+    def __init__(self, inputfiles, alg, n_max=None, usefasttree=True):
+        '''Iterates over several input trees in different files.
+        '''
+        self._filelists = [(tn, flist) for tn, flist in inputfiles]
+        treename = self._filelists[0][0]
+        infilelist = self._filelists[0][1]
+        super(ProcessFriendTrees, self).__init__(infilelist, treename, alg, n_max=n_max, usefasttree=usefasttree)
+        self._multi_tree_getter = dict([(tn, FileObjectGetter(tn)) for tn, flist in self._filelists])
+    
+    def _chain(self, filelist, treename):
+        for tfile in _iter_root_files(filelist):
+            tree = self._multi_tree_getter[treename](tfile)
+            if self._usefasttree:
+                tree = FastTree(tree)
+            for event in tree:
+                yield event
+    
+    def _iterable(self):
+        chains = [self._chain(flist, tn) for tn, flist in self._filelists]
+        for event in itertools.izip(*chains):
+            yield self._alg.event(event)
+        self._alg.end()
+        return
+
+###############################################################################
+
 class FastTree(object):
     '''Lazilly enable branches as they are used.
     This prevents loading unused data. This will be slower than a regular tree
