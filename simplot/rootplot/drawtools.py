@@ -420,6 +420,9 @@ class HistogramCollection:
         for n in self.nameList:
             yield n,self.hist[n]
             
+    def keys(self):
+        return self.hist.keys()
+            
     def getFirst(self):
         return iter(self).next()[1]
     
