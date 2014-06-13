@@ -330,7 +330,6 @@ class ProcessTree(object):
         return
     
     def run(self):
-        self._alg.begin()
         #calculate the total number of events to be processed
         self._total_num_events()
         iterable = progress.printprogress("ProcessTree "+self._treename, 
@@ -353,6 +352,7 @@ class ProcessTree(object):
         return
     
     def _iterable(self):
+        self._alg.begin()
         for tfile in _iter_root_files(self._filelist):
             self._alg.file(tfile)
             tree = self._tree_getter(tfile)
@@ -382,6 +382,7 @@ class ProcessParallelTrees(ProcessTree):
         self._tree_getter = FileObjectTupleGetter(*treenamelist)
     
     def _iterable(self):
+        self._alg.begin()
         for tfile in _iter_root_files(self._filelist):
             self._alg.file(tfile)
             treetuple = self._tree_getter(tfile)
@@ -413,6 +414,7 @@ class ProcessFriendTrees(ProcessTree):
     
     def _chain(self, filelist, treename):
         for tfile in _iter_root_files(filelist):
+            self._alg.file(tfile)
             tree = self._multi_tree_getter[treename](tfile)
             if self._usefasttree:
                 tree = FastTree(tree)
@@ -420,6 +422,7 @@ class ProcessFriendTrees(ProcessTree):
                 yield event
     
     def _iterable(self):
+        self._alg.begin()
         chains = [self._chain(flist, tn) for tn, flist in self._filelists]
         for event in itertools.izip(*chains):
             yield self._alg.event(event)
