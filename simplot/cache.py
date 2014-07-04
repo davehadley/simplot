@@ -98,7 +98,7 @@ class CachePickle(Cache):
     def write(self, data):
         fname = self.tmpfilename()
         with open(fname, "wb") as outfile:
-            pickle.dump(data, outfile)
+            pickle.dump(data, outfile, protocol=pickle.HIGHEST_PROTOCOL)
         return
 
 ###############################################################################
