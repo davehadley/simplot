@@ -2,6 +2,7 @@ import hashlib
 import os
 import numpy
 import cPickle as pickle
+import ROOT
 
 ###############################################################################
 
@@ -32,13 +33,23 @@ def cache_numpy(uniquestr, callable_, filelist=None):
         cn.write(data)
     return data
 
+def cache_root(uniquestr, callable_, filelist=None):
+    cn = CacheRoot(uniquestr)
+    if cn.exists() and (filelist is None or cn.newerthan(*filelist)):
+        data = cn.read()
+    else:
+        data = callable_()
+        cn.write(data)
+    return data
+
 ###############################################################################
 
 class Cache(object):
-    def __init__(self, uniquestr, prefix="tmp", tmpdir="/tmp/simplot_cache"):
+    def __init__(self, uniquestr, prefix="tmp", postfix=".bin", tmpdir="/tmp/simplot_cache"):
         self._uniquestr = uniquestr
         self._tmpdir = tmpdir
         self._prefix = prefix
+        self._postfix = postfix
         
     def tmpfilename(self):
         uniquestr = self._uniquestr
@@ -49,7 +60,7 @@ class Cache(object):
         return "".join([tmpdir,
                         os.sep,
                         "_".join((self._prefix, hashstr)),
-                        ".bin",
+                        self._postfix,
                         ])
     
     def exists(self):
@@ -70,7 +81,7 @@ class Cache(object):
 
 class CacheNumpy(Cache):
     def __init__(self, uniquestr, prefix="tmp", tmpdir="/tmp/simplot_cache"):
-        super(CacheNumpy, self).__init__(uniquestr, prefix, tmpdir)
+        super(CacheNumpy, self).__init__(uniquestr=uniquestr, prefix=prefix, tmpdir=tmpdir)
     
     def read(self):
         fname = self.tmpfilename()
@@ -85,9 +96,55 @@ class CacheNumpy(Cache):
 
 ###############################################################################
 
+class CacheRoot(Cache):
+    def __init__(self, uniquestr, prefix="tmp", tmpdir="/tmp/simplot_cache", usepickle=True):
+        super(CacheRoot, self).__init__(uniquestr=uniquestr, prefix=prefix, tmpdir=tmpdir, postfix=".root")
+        self._usepickle = usepickle
+    
+    def read(self):
+        fname = self.tmpfilename()
+        f = ROOT.TFile(fname, "read")
+        data = {}
+        for key in f.GetListOfKeys():
+            print "DEBUG", key.GetName()
+            obj = key.ReadObj()
+            data[key.GetName()] = obj
+        #unpickle
+        result = []
+        for key in sorted(data.keys()):
+            d = data[key]
+            if "picklestring_" in key:
+                d = pickle.loads(str(d))
+            result.append(d)
+        return result
+    
+    def write(self, data):
+        try:
+            iterable = iter(data)
+        except TypeError:
+            iterable = [data]
+        fname = self.tmpfilename()
+        outfile = ROOT.TFile(fname, "recreate")
+        for num, obj in enumerate(iterable):
+            name = "object_" + str(num)
+            try:
+                outfile.WriteObject(obj, name)
+            except TypeError:
+                if not self._usepickle:
+                    raise
+                name = "picklestring_" + str(num)
+                #must be a python object, pickle the 
+                string = pickle.dumps(obj, protocol=0)
+                cstring = ROOT.TObjString(string)
+                outfile.WriteObject(cstring, name)
+        outfile.Close()
+        return
+
+###############################################################################
+
 class CachePickle(Cache):
     def __init__(self, uniquestr, prefix="tmp", tmpdir="/tmp/simplot_cache"):
-        super(CachePickle, self).__init__(uniquestr, prefix, tmpdir)
+        super(CachePickle, self).__init__(uniquestr=uniquestr, prefix=prefix, tmpdir=tmpdir)
     
     def read(self):
         fname = self.tmpfilename()
