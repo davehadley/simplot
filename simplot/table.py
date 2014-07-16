@@ -170,7 +170,7 @@ class TableLatexOutput(TableOutputBase):
         print >>latex,"\\begin{tabular}{"+colformat+"}"
         hrow = self._get_printed_head_row(table)
         if hrow:
-            allData = [hrow]+self.rows
+            allData = [hrow] + table.get_rows()
         else:
             allData = table.get_rows()
         for row in allData:
