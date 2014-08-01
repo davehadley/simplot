@@ -717,6 +717,26 @@ class HistogramCollectionPainter:
             for k,h in self.histCol:
                 if k not in treatAsData:
                     h.Scale(scale)
+        elif mode == drawoptions.Normalisation.totalUnitArea:
+            totalData = 0.0
+            totalMc = 0.0
+            for k,h in self.histCol:
+                n = h.Integral(0,h.GetNbinsX()+1)
+                if k in treatAsData:
+                    totalData += n
+                else:
+                    totalMc += n
+            scaleData = 1.0
+            scaleMC = 1.0
+            if (not totalMc == 0.0):
+                scaleMC = 1.0 / totalMc
+            if (not totalData == 0.0):
+                scaleData = 1.0 / totalData
+            for k,h in self.histCol:
+                if k not in treatAsData:
+                    h.Scale(scaleMC)
+                else:
+                    h.Scale(scaleData)
         elif mode == drawoptions.Normalisation.unitArea:
             for k,h in self.histCol:
                 n = h.Integral(0,h.GetNbinsX()+1)
