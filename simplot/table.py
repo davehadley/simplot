@@ -187,13 +187,21 @@ class TableLatexOutput(TableOutputBase):
         return result
     
     def _sanitise_latex_string(self, entry):
-        result = entry
-        #deal with underscores
-        result = result.replace("\\_","_")
-        result = result.replace("_","\\_")
-        #change \pm
-        result = result.replace("+-","\\ensuremath{\\pm}")
-        return result
+        mathgroups = entry.split("$")
+        result = []
+        for i, text in enumerate(mathgroups):
+            if i%2:
+                #even, math mode
+                #put the $ back in
+                text = "$" + text + "$"
+            else:
+                #deal with underscores
+                text = text.replace("\\_","_")
+                text = text.replace("_","\\_")
+                #change \pm
+                text.replace("+-","\\ensuremath{\\pm}")
+            result.append(text)
+        return "".join(result)
 
 ###############################################################################
 
