@@ -6,7 +6,7 @@ import multiprocessing
 ###############################################################################
 
 class Job:
-    def __init__(self, name, command, logFileName="", memLimit=1024, vmemLimit=4*1024):
+    def __init__(self, name, cmd, logFileName="", memLimit=1024, vmemLimit=4*1024):
         '''Define a single job.
         
         Set logFileName to None to switch off log files.
@@ -25,7 +25,7 @@ class Job:
         :type vmemLimit: int
         '''
         self.name = name
-        self.command = command
+        self.command = cmd
         if logFileName is not None and logFileName == "":
             logFileName = "log.{0}.txt".format(name)
         self.logFileName = logFileName
@@ -35,7 +35,7 @@ class Job:
 ###############################################################################
 
 class ParallelJobRunner:
-    def __init__(self, jobs, nCores=None, beNice=True):
+    def __init__(self, jobs, ncores=None, beNice=True):
         '''Run several shell commands in parallel on a single machine. 
         
         If provided, the stdout and stderr of the jobs will be written to the 
@@ -50,15 +50,15 @@ class ParallelJobRunner:
         self._jobs = jobs
         self._beNice = beNice
         maxCores = multiprocessing.cpu_count()
-        if nCores is None:
+        if ncores is None:
             #Automatically run all cores
-            nCores = max(1,maxCores)
-        self._nCores = nCores
+            ncores = max(1,maxCores)
+        self._nCores = ncores
         #Check inputs are valid
-        if nCores <= 0:
-            raise ValueError("number of cores must be greater than 0. ({0} given)".format(nCores))
-        if  nCores > maxCores:
-            raise ValueError("number of cores must be less than or equal to the number of cores available on this machine ({0} given, {1} available on this host).".format(nCores,maxCores))
+        if ncores <= 0:
+            raise ValueError("number of cores must be greater than 0. ({0} given)".format(ncores))
+        if  ncores > maxCores:
+            raise ValueError("number of cores must be less than or equal to the number of cores available on this machine ({0} given, {1} available on this host).".format(ncores,maxCores))
 
     def run(self):
         self._runCommandsInParallel()
