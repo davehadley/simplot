@@ -29,12 +29,12 @@ class ClusterJob:
     #a globally accessible time string that all jobs created this session may use to label themselves. 
     initialiseTime = time.strftime("%Y-%m-%d.%H%M")
     
-    def __init__(self, jobName, queue, cmd, workingDirectory="./", isTest=False, isVerbose=False, isQuiet=False,
+    def __init__(self, name, queue, cmd, workingDirectory="./", isTest=False, isVerbose=False, isQuiet=False,
                  memoryLimit=4000,
                  swapLimit=4000,
     ):
         self.cmd = cmd
-        self.jobName = jobName
+        self.jobName = name
         self.queue = queue
         self.workingDirectory = self.getAbsolutePath(workingDirectory)
         self.isTest = isTest
