@@ -70,11 +70,10 @@ class ClusterJob:
         cmd = "bsub < "+self.scriptPath
         if self.isTest or not self.isQuiet:
             print str(self),"executing:",cmd
-        if hosts.ishost(hosts.KnownHosts.WARWICK_CLUSTER_WORKER):
-            if self.isLoginNode():
-                os.system(cmd)
-            elif not self.isTest:
-                raise ClusterJobException("host not recognised as cluster login node",socket.getfqdn())
+        if hosts.ishost(hosts.KnownHosts.WARWICK_CLUSTER_LOGIN):
+            os.system(cmd)
+        elif not self.isTest:
+            raise ClusterJobException("host not recognised as cluster login node",socket.getfqdn())
     
     def isLoginNode(self):
         return "epp-ui01" in socket.getfqdn()
