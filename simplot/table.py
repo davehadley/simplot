@@ -206,14 +206,18 @@ class TableLatexOutput(TableOutputBase):
 ###############################################################################
 
 class TableAsciiOutput(TableOutputBase):
-    def __init__(self, formatter=None):
+    def __init__(self, formatter=None, alignment="c"):
         super(TableAsciiOutput, self).__init__(formatter)
+        self._alignment = alignment
+        if not any([alignment == a for a in ("l", "r", "c")]):
+            raise ValueError("TableAsciiOutput given invalid alignment string", alignment)
         
     def getstring(self, table):
         return self._get_ascii_table(table)
 
     def _get_ascii_table(self, table):
         pt = prettytable.PrettyTable(self._get_printed_head_row(table))
+        pt.align = self._alignment
         for row in table.get_rows():
             row = [ self._convert_entry_to_string(n) for n in row]
             pt.add_row(row)
