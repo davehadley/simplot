@@ -653,11 +653,14 @@ class HistogramCollectionPainter:
         axisLabels = self._findOption(drawoptions.AxisLabels, default=drawoptions.AxisLabels(x=self.histCol.name))
         axisScale = self._findOption(drawoptions.AxisScale, default=drawoptions.AxisScale())
         canvasSize = self._findOption(drawoptions.CanvasSize, default=drawoptions.CanvasSize())
+        frameBinLabels = self._findOption(drawoptions.BinLabels, default=None)
         #create the canvas
         canv = ROOT.TCanvas(self.histCol.getName(), self.histCol.getTitle(),canvasSize.getX(),canvasSize.getY())
         frameTitle = axisLabels.getTitle()
         xMin,yMin,xMax,yMax = self.frameLimits
         frame = canv.DrawFrame(xMin,yMin,xMax,yMax,frameTitle)
+        if frameBinLabels:
+            self._setFrameBinLabels(frameBinLabels, frame)
         self.canv = canv
         if axisScale.isLogY():
             self.canv.SetLogy(1)
@@ -666,6 +669,33 @@ class HistogramCollectionPainter:
         if axisScale.isLogZ():
             self.canv.SetLogz(1)
         self.frame = frame
+        return
+
+    def _getbinedges(self, hist):
+        numbins = hist.GetNbinsX()
+        binedges = []
+        for ii in xrange(numbins + 1):
+            binedges.append(hist.GetXaxis().GetBinLowEdge(ii + 1))
+        return numpy.array(binedges, dtype=float)
+
+    def _setFrameBinLabels(self, frameBinLabels, frame):
+        hist = self.histCol.getFirst()
+        #get bin edges
+        binedges = self._getbinedges(hist)
+        #copy binning
+        frame.GetXaxis().Set(len(binedges)-1, binedges)
+        #set bin labels
+        if frameBinLabels.xlabels is not None:
+            xlabels = frameBinLabels.xlabels
+            if xlabels == drawoptions.BinLabels.auto:
+                #copy labels from the input histogram
+                xlabels = []
+                for ii in xrange(hist.GetNbinsX()):
+                    l = hist.GetXaxis().GetBinLabel(ii + 1)
+                    xlabels.append(l)
+            #set labels
+            for ii, label in enumerate(xlabels):
+                frame.GetXaxis().SetBinLabel(ii + 1, label)
         return
     
     def _handleOverflow(self):

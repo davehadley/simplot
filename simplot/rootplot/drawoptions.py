@@ -301,6 +301,13 @@ class AxisLabels:
         return "AxisLabels(" + ",".join([self.x,self.y,self.z]) + ")"
 
 ###############################################################################
+
+class BinLabels:
+    auto = "auto"
+    def __init__(self, xlabels=auto):
+        self.xlabels = xlabels
+
+###############################################################################
     
 class AxisScale:
     
