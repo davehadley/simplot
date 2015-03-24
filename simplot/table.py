@@ -46,6 +46,12 @@ class Table:
     
     def get_headrow(self):
         return self._headrow
+
+    def _get_rows_with_headrow(self):
+        ret = list(self._rows)
+        if self._headrow:
+            ret.insert(0, list(self._headrow))
+        return ret
     
     def get_name(self):
         return self._name
@@ -150,6 +156,16 @@ class TableOutputBase(object):
                 raise Exception("can't convert entry to value and error", entry)
         return value, error
 
+    def _calc_col_widths(self, tab):
+        header = self._get_printed_head_row(tab)
+        colwidth = [len(str(x)) for x in header]
+        for row in tab.get_rows():
+            rowstr = [self._convert_entry_to_string(n) for n in row]
+            width = [len(x) for x in rowstr]
+            for index in xrange(len(width)):
+                colwidth[index] = max(colwidth[index], width[index])
+        return colwidth
+
 ###############################################################################
 
 class TableLatexOutput(TableOutputBase):
@@ -222,6 +238,41 @@ class TableAsciiOutput(TableOutputBase):
             row = [ self._convert_entry_to_string(n) for n in row]
             pt.add_row(row)
         return str(pt)
+
+###############################################################################
+
+class TableOrgOutput(TableOutputBase):
+    def __init__(self, formatter=None):
+        super(TableOrgOutput, self).__init__(formatter)
+
+    def getstring(self, table):
+        return self._get_org_table(table)
+
+    def _get_org_table(self, table):
+        nrows = table.get_nrows()
+        ncols = table.get_ncols()
+        colwidth = self._calc_col_widths(table)
+        #flatten rows to a list of strings
+        flattable = []
+        for rownum, row in enumerate(table._get_rows_with_headrow()):
+            row = [ self._convert_entry_to_string(n) for n in row]
+            #pad short rows with whitespace
+            row = [r.ljust(w) for r, w in zip(row, colwidth)]
+            row = "| " + " | ".join(row) + " |"
+            flattable.append(row)
+        #create a horizontal rule
+        hline = ["-"*(w + 2)  for w in colwidth]
+        hline = "|" + "+".join(hline) + "|"
+        #inject hlines
+        if table.get_headrow() is not None:
+            flattable.insert(1, hline)
+        flattable.insert(0, hline)
+        flattable.insert(len(flattable), hline)
+        #merge to a single string
+        sio = StringIO.StringIO()
+        for row in flattable:
+            print >>sio, row
+        return sio.getvalue()
 
 ###############################################################################
 
