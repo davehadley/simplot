@@ -452,6 +452,15 @@ class BaseBinning:
     def highBound(self):
         return self.rooBinning.highBound()
 
+    def getBinEdgesList(self):
+        """Safer than using getBinningArray but may have worse performance.
+        :returns: a python list of bin edges.
+        """
+        arr = self.getBinningArray()
+        return [float(arr[ii]) for ii in xrange(self.getNBins() + 1)]
+
+###############################################################################
+
 class AutoBinning(BaseBinning):
     
     def __init__(self, nbins):
