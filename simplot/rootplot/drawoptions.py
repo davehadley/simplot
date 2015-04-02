@@ -484,6 +484,8 @@ class AutoBinning(BaseBinning):
     def highBound(self):
         return None
 
+###############################################################################
+
 class UniformBinning(BaseBinning):
     """Draw option to set uniform histogram binning.
     """
@@ -501,6 +503,8 @@ class UniformBinning(BaseBinning):
         self.xMax = xMax
         self.rooBinning = ROOT.RooBinning(nBins, xMin, xMax)
 
+###############################################################################
+
 class VariableBinning(BaseBinning):
     """Draw option to set variable width histogram bins.
     """ 
@@ -516,7 +520,9 @@ class VariableBinning(BaseBinning):
         self.binEdges = binEdges
         self.arrayEdges = numpy.array(binEdges)
         self.rooBinning = ROOT.RooBinning(nBins, self.arrayEdges)
-        
+
+###############################################################################
+
 class RooBinningWrapper(BaseBinning):
     """Specify binning directly with a ROOT.RooBinning object.
     
@@ -536,9 +542,6 @@ class YBinning:
     
     By default the binning options apply to x-axis only. To set the y-axis 
     binning you should wrap your binning option in a YBinning option. For example,
-    
-    
-    
     """
     def __init__(self, binningObject):
         self.binningObject = binningObject
