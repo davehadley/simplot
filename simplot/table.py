@@ -3,6 +3,7 @@ import StringIO
 import pprint
 import itertools
 import os
+import math
 
 import prettytable
 
@@ -15,6 +16,23 @@ class StringFormatter:
         return self._fstr.format(entry)
 
 _defaultformatter = StringFormatter("{:.2g}")
+
+###############################################################################
+
+class SignificantFigureFormatter:
+    def __init__(self, n):
+        self._n = n
+
+    def __call__(self, entry):
+        return str(self._round_sig(entry, self._n))
+
+    def _round_sig(self, x, sig):
+        #stolen from: http://stackoverflow.com/questions/3410976/how-to-round-a-number-to-significant-figures-in-python
+        if x == 0:
+            ret = x
+        else:
+            ret = round(x, sig-int(math.floor(math.log10(abs(x)))) - 1)
+        return ret
 
 ###############################################################################
 
