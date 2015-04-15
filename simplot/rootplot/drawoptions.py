@@ -784,7 +784,7 @@ class Format(BaseFormat):
     Automatically colors and styles lines, markers and fill areas for MC and 
     data.
     """
-    def __init__(self, fillArea=False, dashedLines=False):
+    def __init__(self, fillArea=False, dashedLines=False, lineWidth=None):
         """
         :param fillArea: switch on/off setting of histogram fill areas.
         :type fillArea: bool
@@ -798,13 +798,14 @@ class Format(BaseFormat):
         self.marker = itertools.cycle(xrange(22,35))
         self.dataMarker = itertools.cycle(xrange(20,35))
         self.fillStyle = itertools.cycle([3145, 3154, 3105, 3195])
+        self.lineWidth = lineWidth
         if dashedLines:
             self.lineStyle = itertools.cycle([1,3,4,6,2])
         else:
             self.lineStyle = itertools.cycle([1])
         self.userDefined = dict()
         
-    def set(self, name, color=None, markerStyle=None, lineStyle=None):
+    def set(self, name, color=None, markerStyle=None, lineStyle=None, lineWidth=None):
         """Override default behaviour for a particular histogram/sub-dataset.
         :param name: name of the histogram.
         :type name: str
@@ -815,13 +816,14 @@ class Format(BaseFormat):
         :param lineStyle: set ROOT line style. See ROOT.TAttLine.
         :type lineStyle: int
         """
-        self.userDefined[name] = (color,markerStyle,lineStyle)
+        self.userDefined[name] = (color,markerStyle,lineStyle,lineWidth)
     
     def format(self, name, histogram, isData):
         """Implementation of auto-formatting algorithm.
         
         See BaseFormat for more details on arguments.
         """
+        lineWidth = self.lineWidth
         #get colors options
         if isData:
             col = self.dataColors.next()
@@ -833,16 +835,20 @@ class Format(BaseFormat):
             line = self.lineStyle.next()
         #get user overrides
         if name in self.userDefined:
-            userCol,userMkr,userLine = self.userDefined[name]
+            userCol,userMkr,userLine,userLineWidth = self.userDefined[name]
             if userCol is not None:
                 col = userCol
             if userMkr is not None:
                 mkr = userMkr
             if userLine is not None:
-                line = userLine                
+                line = userLine
+            if userLineWidth is not None:
+                lineWidth = userLineWidth
         #print "DEBUG : format",name,col,mkr,line
         #set histogram attributes
         histogram.SetLineColor(col)
+        if lineWidth is not None:
+            histogram.SetLineWidth(lineWidth)
         if not isData and self.fillArea:
             style = self.fillStyle.next()
             histogram.SetFillColor(col)

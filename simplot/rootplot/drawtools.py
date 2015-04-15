@@ -1661,6 +1661,117 @@ def _makeUnitTestFile():
 
 ###############################################################################
 
+class GraphCollectionPainter:
+
+    def __init__(self):
+        self.canv = None
+
+    def paint(self, name, title, graphs, *options):
+        _checkAllOptionsAreValid(options)
+        #make a copy of the graphs so that we don't modify the originals
+        graphs = [gr.Clone() for gr in graphs]
+        #store a reference of the options in this class so we don't have to pass
+        #them to every method
+        framelimits = self._calculateFrameLimits(graphs, options)
+        canv, frame = self._makeCanvas(name, title, framelimits, options)
+        self._formatGraphs(graphs, options)
+        self._drawGraphs(graphs, canv, options)
+        canv.RedrawAxis()
+        leg = self._drawLegend(graphs, framelimits, options)
+        canv.Update()
+        #store drawn objects in the canvas to prevent automatic deletion
+        canv._graphcolpainter_store = [leg, graphs, frame]
+        return canv
+
+    def _formatGraphs(self, graphs, options):
+        treatAsData = _findOption(drawoptions.TreatAsData, options, default=drawoptions.TreatAsData())
+        format = _findOption(drawoptions.BaseFormat, options, default=drawoptions.Format())
+        for gr in graphs:
+            name = gr.GetName()
+            isData = name in treatAsData
+            format.format(name, gr, isData)
+        return
+
+    def _drawGraphs(self, graphs, canv, options):
+        canv.cd()
+        for gr in graphs:
+            gr.Draw()
+        return
+
+    def _drawLegend(self, graphs, frameLimits, options):
+        """Draw the legend.
+
+        The legend position is automatically calculated unless the user draw
+        option drawoptions.LegendPosition is set.
+        """
+        leg = None
+        #treatAsData = _findOption(drawoptions.TreatAsData, options, default=drawoptions.TreatAsData())
+        legendPosition = _findOption(drawoptions.LegendPosition, options, default=drawoptions.LegendPosition())
+        if legendPosition.doDraw():
+            if legendPosition.hasUserLimits():
+                xLow,yLow,xHigh,yHigh = legendPosition.calculateLegendLimits()
+                opt = "brNDC"
+            else:
+                xLow,yLow,xHigh,yHigh = _calculateLegendLimits(frameLimits, listOfGraphs=graphs, targetLeft=True, targetBottom=True)
+                opt = "br"
+            #print xLow,yLow,xHigh,yHigh
+            leg = ROOT.TLegend(xLow,yLow,xHigh,yHigh, "", opt)
+            leg.SetFillStyle(1001)
+            leg.SetFillColor(ROOT.kWhite)
+            for gr in graphs:
+                name = gr.GetTitle()
+                opt = "LP"
+                leg.AddEntry(gr, name, opt)
+            leg.Draw()
+        return leg
+
+
+
+    def _calculateFrameLimits(self, graphs, options):
+        """Automatically determines the x and y ranges for the plot.
+        Alternatively the drawoptions.FrameRange can be used to override the
+        automatic behaviour.
+        """
+        frameRange = _findOption(drawoptions.FrameRange, options, default=drawoptions.FrameRange())
+        xMin = frameRange.getXMin()
+        xMax = frameRange.getXMax()
+        yMin = frameRange.getYMin()
+        yMax = frameRange.getYMax()
+        auto = drawoptions.FrameRange.auto
+        if frameRange.getXMin() == auto:
+            xMin = min(gr.GetXaxis().GetXmin() for gr in graphs)
+        if frameRange.getXMax() == auto:
+            xMax = min(gr.GetXaxis().GetXmax() for gr in graphs)
+        if frameRange.getYMin() == auto:
+            yMin = min(gr.GetMinimum() for gr in graphs)
+        if frameRange.getYMax() == auto:
+            yMax = max(gr.GetMaximum() for gr in graphs)
+            headRoom = frameRange.getHeadroom()
+            yMax = yMax + headRoom*math.fabs(yMax)
+        frameLimits = (xMin,yMin,xMax,yMax)
+        return frameLimits
+
+    def _makeCanvas(self, name, title, frameLimits, options):
+        #find relevent options
+        axisLabels = _findOption(drawoptions.AxisLabels, options, default=drawoptions.AxisLabels(x=name))
+        axisScale = _findOption(drawoptions.AxisScale, options, default=drawoptions.AxisScale())
+        canvasSize = _findOption(drawoptions.CanvasSize, options, default=drawoptions.CanvasSize())
+        #create the canvas
+        canv = ROOT.TCanvas(name, title, canvasSize.getX(), canvasSize.getY())
+        frameTitle = axisLabels.getTitle()
+        xMin,yMin,xMax,yMax = frameLimits
+        frame = canv.DrawFrame(xMin,yMin,xMax,yMax,frameTitle)
+        self.canv = canv
+        if axisScale.isLogY():
+            canv.SetLogy(1)
+        if axisScale.isLogX():
+            canv.SetLogx(1)
+        if axisScale.isLogZ():
+            canv.SetLogz(1)
+        return canv, frame
+
+###############################################################################
+
 def _unitTest_EfficiencyPainter():
     from commonAnalysis.analysis import datasets
     inputDataset = datasets.Dataset("unitTestDataset",_unitTestInputFileName)
