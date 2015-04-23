@@ -5,7 +5,7 @@ import simplot.table
 
 class CanvasWriter:
 
-    def __init__(self, path="./", extensions=["png","eps", "C"], verbose=True, debug=False):
+    def __init__(self, path="./", extensions=["png","eps", "root"], verbose=True, debug=False):
         """
         :param _path: output directory to store plots (created if it does not exist). Plots are stored in sub directories by file extension eg _path/png
         :type _path: str
