@@ -1743,9 +1743,9 @@ class GraphCollectionPainter:
         if frameRange.getXMax() == auto:
             xMax = min(gr.GetXaxis().GetXmax() for gr in graphs)
         if frameRange.getYMin() == auto:
-            yMin = min(gr.GetMinimum() for gr in graphs)
+            yMin = min(gr.GetHistogram().GetMinimum() for gr in graphs)
         if frameRange.getYMax() == auto:
-            yMax = max(gr.GetMaximum() for gr in graphs)
+            yMax = max(gr.GetHistogram().GetMaximum() for gr in graphs)
             headRoom = frameRange.getHeadroom()
             yMax = yMax + headRoom*math.fabs(yMax)
         frameLimits = (xMin,yMin,xMax,yMax)
