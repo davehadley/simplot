@@ -25,7 +25,7 @@ def makeproject(filename, name="", oaanalysis=False):
             name = basicHeader.SoftwareVersion
             #remove null characters from SoftwareVersion
             name = "".join(name.split("\x00"))
-            if ord(str(basicHeader.IsMC)): # IsMC is char type, so convert to integer with ord 
+            if int(str(basicHeader.IsMC)): # string conversion neccessary as in some versions IsMC is of char type
                 name += "_mc"
             else:
                 name += "_data"
