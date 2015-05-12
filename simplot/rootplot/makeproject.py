@@ -29,6 +29,8 @@ def makeproject(filename, name="", oaanalysis=False):
             name = basicHeader.SoftwareVersion
             #remove null characters from SoftwareVersion
             name = "".join(name.split("\x00"))
+            if len(name) == 0:
+                name = "unknownversion"
             if int(str(basicHeader.IsMC)): # string conversion neccessary as in some versions IsMC is of char type
                 name += "_mc"
             else:
