@@ -3,6 +3,8 @@ import simplot.filelock as filelock
 
 import ROOT
 
+ROOT.gROOT.ProcessLine( "struct MakeProjectStringBuf { char s[256]; };" )
+
 _hasloadedlib = False
 
 def makeproject(filename, name="", oaanalysis=False):
@@ -11,7 +13,7 @@ def makeproject(filename, name="", oaanalysis=False):
     #do sanity checks
     namesMatch = (not _hasloadedlib) or _libname == name
     if not namesMatch:
-        raise Exception("already loaded an oaAnalaysis library! Loading multiple libraries within the same session is not supported",name, _libname)
+        raise Exception("already loaded an oaAnalaysis library! Loading multiple libraries within the same session is not supported", name, _libname)
     #open input file
     inputFileName = filename
     ROOT.TFile.SetReadStreamerInfo(False) #suppress missing dictionary warnings by not reading in streamer info.
@@ -21,6 +23,8 @@ def makeproject(filename, name="", oaanalysis=False):
         #Automatically determine the software version from header
         basicHeader = tfile.Get("HeaderDir/BasicHeader")
         if basicHeader:
+            charbuffer = ROOT.MakeProjectStringBuf();
+            basicHeader.SetBranchAddress("SoftwareVersion", ROOT.AddressOf(charbuffer, "s"))
             basicHeader.GetEntry(0)
             name = basicHeader.SoftwareVersion
             #remove null characters from SoftwareVersion
@@ -36,7 +40,6 @@ def makeproject(filename, name="", oaanalysis=False):
 #    libraryFileName = "./"+libraryFileName
     workingDir = os.getcwd()
     libraryFileName = workingDir+"/"+libraryFileName
-    
     # get lock to revent multiple jobs simultaneously trying to make library
     lock = filelock.FileLock(".lockFile_libReadoaAnalysis_"+name)    
     lock.lock()
