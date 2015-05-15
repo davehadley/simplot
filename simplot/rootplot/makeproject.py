@@ -3,8 +3,6 @@ import simplot.filelock as filelock
 
 import ROOT
 
-ROOT.gROOT.ProcessLine( "struct MakeProjectStringBuf { char s[256]; };" )
-
 _hasloadedlib = False
 
 def makeproject(filename, name="", oaanalysis=False):
@@ -22,9 +20,7 @@ def makeproject(filename, name="", oaanalysis=False):
     if oaanalysis:
         #Automatically determine the software version from header
         basicHeader = tfile.Get("HeaderDir/BasicHeader")
-        if basicHeader:
-            charbuffer = ROOT.MakeProjectStringBuf();
-            basicHeader.SetBranchAddress("SoftwareVersion", ROOT.AddressOf(charbuffer, "s"))
+        if basicHeader and basicHeader.GetEntries() > 0:
             basicHeader.GetEntry(0)
             name = basicHeader.SoftwareVersion
             #remove null characters from SoftwareVersion
