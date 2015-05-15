@@ -53,4 +53,4 @@ def makeproject(filename, name="", oaanalysis=False):
     _libname = name
     #load hack scripts
     lock.release()
-    return
+    return outputPath
