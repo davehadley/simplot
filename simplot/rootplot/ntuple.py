@@ -274,6 +274,9 @@ class TreeFillerAlgorithm(Algorithm):
         self._outfile.Close()
         return
 
+    def getoutputfilehandle(self):
+        return self._outfile
+
 ###############################################################################
 
 class FileObjectGetter:
