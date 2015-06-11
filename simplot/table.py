@@ -42,12 +42,21 @@ class Table:
         self._headrow = None
         self._setheadrow(headrow)
         self._rows = []
+        self._hlines = []
             
     def _setheadrow(self, headrow):
         #ensure that header row is all strings
         if headrow is not None:
             headrow = [str(e) for e in headrow]
         self._headrow = headrow
+        return
+
+    def addhline(self):
+        self._hlines.append(len(self._rows))
+
+    def pophline(self):
+        if len(self._hlines):
+            self._hlines.pop()
         return
         
     def addrow(self, row):
@@ -282,6 +291,8 @@ class TableOrgOutput(TableOutputBase):
         hline = ["-"*(w + 2)  for w in colwidth]
         hline = "|" + "+".join(hline) + "|"
         #inject hlines
+        for rnum in reversed(sorted(table._hlines)):
+            flattable.insert(rnum + 1, hline)
         if table.get_headrow() is not None:
             flattable.insert(1, hline)
         flattable.insert(0, hline)
