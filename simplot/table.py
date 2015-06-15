@@ -126,8 +126,8 @@ class TableOutputBase(object):
             os.makedirs(os.path.dirname(filename))
         except os.error:
             pass
-        outfile = open(filename,"w")
-        print >>outfile,self.getstring(table)
+        with open(filename,"w") as outfile:
+            print >>outfile,self.getstring(table)
     
     def getstring(self, table):
         raise NotImplementedError("Users of this class should override this method.")
