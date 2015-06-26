@@ -10,24 +10,45 @@ import sys
 ###############################################################################
 
 class BranchPrimitive:
-    def __init__(self, name, tree, start=None):
+    def __init__(self, name, tree, start=None, type_=None):
         """
         :param name: name of the output variable.
         :type name: str
         :param tree: the output TTree.
         """
         self.name = name
+        #set default values for unset parameters
         if start is None:
             start = 0.0
-        self.value = numpy.array([start], dtype=float)
+        if type_ is None:
+            type_ = float
+        #set fields
+        self.value = numpy.array([start], dtype=type_)
+        self._roottypestr = self._getroottype(type_)
         self.start = start
         self.tree = tree
+        #create branch
         self._setbranch()
+
+    def _getroottype(self, type_):
+        roottype = None
+        #determine root data type
+        if type is float:
+            roottype = "/D"
+        elif type is int or type is numpy.int32:
+            roottype = "/I"
+        elif type is long or type is numpy.int64:
+            roottype = "/L"
+        elif type is numpy.uint64:
+            roottype = "/l"
+        else:
+            raise Exception("Unsupported type", type_)
+        return roottype
         
     def _setbranch(self):
         branch = self.tree.FindBranch(self.name)
         if not branch:
-            branch = self.tree.Branch(self.name, self.value, self.name+"/D" )
+            branch = self.tree.Branch(self.name, self.value, self.name+self._roottypestr)
         else:
             #self.tree.SetBranchAddress(self.name, self.value, self.name+"/D" )
             self.tree.SetBranchAddress(self.name, self.value)
@@ -537,7 +558,7 @@ class ProcessTreeSubset(ProcessTree):
 ###############################################################################
 
 class BranchFiller(object):
-    def __init__(self, name, function, start_value=0.0, ignore_errors=False):
+    def __init__(self, name, function, start_value=0.0, ignore_errors=False, type_=None):
         '''BranchFiller handles setting branch values on each event and is designed to be provided to a TreeFillerAlgorithm.
         The required arguments are the name of the output branch and a callable object 
         or function that is applied to the event that returns a double.
@@ -548,6 +569,7 @@ class BranchFiller(object):
         self._start_value = start_value
         self._branch = None
         self._ignore_errors = ignore_errors
+        self._storedtype = type_
         if isinstance(function, str):
             function = operator.attrgetter(function)
         self._function = function
@@ -555,7 +577,7 @@ class BranchFiller(object):
             raise Exception("BranchFiller given a non-callable function object.")
     
     def createbranch(self, tree):
-        self._branch = BranchPrimitive(name=self.name, tree=tree, start=self._start_value)
+        self._branch = BranchPrimitive(name=self.name, tree=tree, start=self._start_value, type_=self._storedtype)
         return
     
     def event(self, event):
