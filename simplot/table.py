@@ -4,6 +4,7 @@ import pprint
 import itertools
 import os
 import math
+import csv
 
 import prettytable
 
@@ -290,6 +291,23 @@ class TableOrgOutput(TableOutputBase):
         sio = StringIO.StringIO()
         for row in flattable:
             print >>sio, row
+        return sio.getvalue()
+
+###############################################################################
+
+class TableCsvOutput(TableOutputBase):
+    def __init__(self, formatter=None):
+        super(TableCsvOutput, self).__init__(formatter)
+
+    def getstring(self, table):
+        return self._get_csv_table(table)
+
+    def _get_csv_table(self, table):
+        sio = StringIO.StringIO()
+        out = csv.writer(sio)
+        for row in table._get_rows_with_headrow():
+            row = [ self._convert_entry_to_string(n) for n in row]
+            out.writerow(row)
         return sio.getvalue()
 
 ###############################################################################
