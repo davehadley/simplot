@@ -38,7 +38,7 @@ def makeproject(filename, name="", oaanalysis=False):
 #    libraryFileName = "./"+libraryFileName
     workingDir = os.getcwd()
     libraryFileName = workingDir+"/"+libraryFileName
-    # get lock to revent multiple jobs simultaneously trying to make library
+    # get lock to prevent multiple jobs simultaneously trying to make library
     lock = filelock.FileLock(".lockFile_libReadoaAnalysis_"+name)    
     lock.lock()
     if not os.path.exists(libraryFileName):
@@ -53,4 +53,4 @@ def makeproject(filename, name="", oaanalysis=False):
     _libname = name
     #load hack scripts
     lock.release()
-    return
+    return outputPath
