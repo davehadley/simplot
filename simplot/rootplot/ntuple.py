@@ -33,18 +33,18 @@ class BranchPrimitive:
     def _getroottype(self, type_):
         roottype = None
         #determine root data type
-        if type is float:
+        if type_ is float:
             roottype = "/D"
-        elif type is int or type is numpy.int32:
+        elif type_ is int or type is numpy.int32:
             roottype = "/I"
-        elif type is long or type is numpy.int64:
+        elif type_ is long or type is numpy.int64:
             roottype = "/L"
-        elif type is numpy.uint64:
+        elif type_ is numpy.uint64:
             roottype = "/l"
         else:
             raise Exception("Unsupported type", type_)
         return roottype
-        
+
     def _setbranch(self):
         branch = self.tree.FindBranch(self.name)
         if not branch:
@@ -294,6 +294,9 @@ class TreeFillerAlgorithm(Algorithm):
         self._outtree.AutoSave()
         self._outfile.Close()
         return
+
+    def getoutputfilehandle(self):
+        return self._outfile
 
 ###############################################################################
 
@@ -560,9 +563,9 @@ class ProcessTreeSubset(ProcessTree):
 class BranchFiller(object):
     def __init__(self, name, function, start_value=0.0, ignore_errors=False, type_=None):
         '''BranchFiller handles setting branch values on each event and is designed to be provided to a TreeFillerAlgorithm.
-        The required arguments are the name of the output branch and a callable object 
+        The required arguments are the name of the output branch and a callable object
         or function that is applied to the event that returns a double.
-        Alternatively, function if is a string, a simple attribute getter is constructed with it. 
+        Alternatively, function if is a string, a simple attribute getter is constructed with it.
         Optionally the start_value can be set.
         '''
         self.name = name
@@ -575,7 +578,7 @@ class BranchFiller(object):
         self._function = function
         if not callable(self._function):
             raise Exception("BranchFiller given a non-callable function object.")
-    
+
     def createbranch(self, tree):
         self._branch = BranchPrimitive(name=self.name, tree=tree, start=self._start_value, type_=self._storedtype)
         return

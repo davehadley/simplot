@@ -43,12 +43,21 @@ class Table:
         self._headrow = None
         self._setheadrow(headrow)
         self._rows = []
+        self._hlines = []
             
     def _setheadrow(self, headrow):
         #ensure that header row is all strings
         if headrow is not None:
             headrow = [str(e) for e in headrow]
         self._headrow = headrow
+        return
+
+    def addhline(self):
+        self._hlines.append(len(self._rows))
+
+    def pophline(self):
+        if len(self._hlines):
+            self._hlines.pop()
         return
         
     def addrow(self, row):
@@ -118,8 +127,8 @@ class TableOutputBase(object):
             os.makedirs(os.path.dirname(filename))
         except os.error:
             pass
-        outfile = open(filename,"w")
-        print >>outfile,self.getstring(table)
+        with open(filename,"w") as outfile:
+            print >>outfile,self.getstring(table)
     
     def getstring(self, table):
         raise NotImplementedError("Users of this class should override this method.")
@@ -283,6 +292,8 @@ class TableOrgOutput(TableOutputBase):
         hline = ["-"*(w + 2)  for w in colwidth]
         hline = "|" + "+".join(hline) + "|"
         #inject hlines
+        for rnum in reversed(sorted(table._hlines)):
+            flattable.insert(rnum + 1, hline)
         if table.get_headrow() is not None:
             flattable.insert(1, hline)
         flattable.insert(0, hline)

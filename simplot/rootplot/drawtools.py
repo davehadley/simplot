@@ -220,7 +220,7 @@ class TreePainter:
             if binning and binning.getBinningArray():
                 nBins = binning.getNBins()
                 array = binning.getBinningArray()
-                histogram = ROOT.TH1D(histName,title,nBins,array)
+                histogram = ROOT.TH1D(histName, name,nBins,array)
             #get cut string
             fullCut = None
             scs = splitCut.getCutString()

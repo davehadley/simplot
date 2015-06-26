@@ -2,8 +2,14 @@ import os
 import time
 import stat
 import itertools
+import subprocess
+import threading
+from time import strftime
 
 ###############################################################################
+
+def _addwarwickdomain(l):
+    return [n + ".epp.warwick.ac.uk" for n in l]
 
 class DesktopDefs:
     #see http://www2.warwick.ac.uk/fac/sci/physics/research/epp/internal/computing/hardware/cluster/batch/
@@ -15,7 +21,10 @@ class DesktopDefs:
                  "aubisque",
                 ]
     
-    t2kMachines = ["bosberg", "magpie", "tourmalet", "zoncolan", "grimsel", "redroute", "soulor", ] # "aubisque","simplon" are out of action
+    t2kMachines = ["bosberg", "magpie", "tourmalet", "zoncolan", "oropa", "redroute", "soulor", "aubisque"] # "aubisque","simplon" are out of action
+
+    #t2kMachines = _addwarwickdomain(t2kMachines)
+    #desktops4Core = _addwarwickdomain(desktops4Core)
 
 ###############################################################################
 
@@ -78,6 +87,9 @@ class DesktopJob:
         self.stdoutFile = os.path.splitext(fileName)[0]+".out"
         #copy environment into script
         for k,v in os.environ.iteritems():
+            if "BASH_FUNC" in k:
+                #environment variables containing BASH_FUNC cause problems on CSC.
+                continue
             print >>fileHandle,"export {k}=\"{v}\"".format(k=k,v=v)
         print >>fileHandle,"ulimit -m "+str(self.memoryLimit*1000)
         #change working directory to current working directory
@@ -121,22 +133,42 @@ class DesktopJobRunner:
             subJob = listOfSubJobScripts.pop()
             jobList = nodeCycle.next()
             jobList.append(subJob,)
-        #Create command for each machine
-        commands = []
-        for workerNode,jobList in jobAssignments.iteritems():
-            if len(jobList)>0:
-                cmd = "ssh "+workerNode+" -f 'screen -d -m  /bin/bash -c \""
-                for i,(scriptPath,logFile) in enumerate(jobList):
-                    if i>0:
-                        cmd += " && "
-                    cmd += "nice -n 15 "+scriptPath + " >> "+logFile+ " 2>&1 "
-                cmd += " \" ' "
-                print "Submitting ",len(jobList),"jobs to",workerNode
-                commands.append(cmd)
-        #Finally, submit commands
-        for cmd in commands:
-            print cmd
-            os.system(cmd)
+        #Submit jobs
+        allnodes = []
+        for node, jobs in jobAssignments.iteritems():
+            allnodes.append(_NodeJobRunner(node, jobs))
+        #Run each node in parallel
+        threads = []
+        for n in allnodes:
+            t = threading.Thread(target=n)
+            threads.append(t)
+            t.start()
+        #Wait until all threads are finished
+        for t in threads:
+            t.join()
+        return
+
+class _NodeJobRunner:
+    def __init__(self, node, joblist):
+        self.node = node
+        self.joblist = joblist
+
+    def __call__(self):
+        return self.run()
+
+    def run(self):
+        node = self.node
+        joblist = self.joblist
+        try:
+            for subjobnum, (scriptpath, logfile) in enumerate(joblist):
+                cmd = "nice -n 15 "+ scriptpath + " >> " + logfile + " 2>&1 "
+                cmd = "ssh " + node + " -C \"" + cmd + "\""
+                print "DesktopJobRunner(%s, %s,  starting, %s / %s, %s)" % (strftime("%Y-%m-%d %H:%M:%S"), node, subjobnum, len(joblist), logfile)
+                subprocess.check_call(cmd, shell=True)
+                print "DesktopJobRunner(%s, %s, completed, %s / %s, %s)" % (strftime("%Y-%m-%d %H:%M:%S"), node, subjobnum, len(joblist), logfile)
+        except Exception as ex:
+            print "ERROR ", node, "jobs failed."
+            print ex
         return
 
 ###############################################################################
@@ -145,9 +177,9 @@ def _unitTestDesktopJob():
     jobs = []
     for i in xrange(10):
         cmd = "echo Test desktop job submission "+str(i)
+        cmd += "\nsleep 5;\necho Job "+str(i)+" done."
         j = DesktopJob("job"+str(i), cmd, workingDirectory="./")
         jobs.append(j)
-    cmd = "echo Hello World && sleep 5"
     job = DesktopJobRunner(jobs, machineList=DesktopDefs.t2kMachines)
     job.submit()
 
