@@ -5,6 +5,7 @@ import itertools
 import subprocess
 import threading
 from time import strftime
+from Queue import Queue, Empty
 
 ###############################################################################
 
@@ -117,41 +118,32 @@ class DesktopJobRunner:
         self._jobs = jobs
         self._beNice = beNice
         self._machineList = machineList
-        
-        
+
     def submit(self):
-        #create sub-job scripts
-        listOfSubJobScripts = []
-        for j in self._jobs:
-            scriptPath = j.generateScript()
-            logFile = j.stdoutFile
-            listOfSubJobScripts.append((scriptPath,logFile))
-        #Assign jobs equally between input machines
-        jobAssignments = dict([(m,list()) for m in self._machineList])
-        nodeCycle = itertools.cycle(jobAssignments.itervalues())
-        while len(listOfSubJobScripts)>0:
-            subJob = listOfSubJobScripts.pop()
-            jobList = nodeCycle.next()
-            jobList.append(subJob,)
-        #Submit jobs
-        allnodes = []
-        for node, jobs in jobAssignments.iteritems():
-            allnodes.append(_NodeJobRunner(node, jobs))
-        #Run each node in parallel
+        #Fill jobs into thread safe queue.
+        jobqueue = Queue()
+        for subjobnum, j in enumerate(self._jobs):
+            script = j.generateScript()
+            logfile = j.stdoutFile
+            jobqueue.put((subjobnum, script, logfile))
+        #Create _NodeJobRunner for each node.
+        nodes = [_NodeJobRunner(m, jobqueue) for m in self._machineList]
+        #Run each NodeJobRunner until the Queue is empty.
         threads = []
-        for n in allnodes:
+        for n in nodes:
             t = threading.Thread(target=n)
             threads.append(t)
             t.start()
         #Wait until all threads are finished
         for t in threads:
             t.join()
-        return
+        return        
 
 class _NodeJobRunner:
-    def __init__(self, node, joblist):
+    def __init__(self, node, jobqueue):
         self.node = node
-        self.joblist = joblist
+        self.joblist = jobqueue
+        self._totaljobs = jobqueue.qsize()
 
     def __call__(self):
         return self.run()
@@ -159,13 +151,18 @@ class _NodeJobRunner:
     def run(self):
         node = self.node
         joblist = self.joblist
+        njobs = self._totaljobs
         try:
-            for subjobnum, (scriptpath, logfile) in enumerate(joblist):
+            while True:
+                subjobnum, scriptpath, logfile = joblist.get(block=False)
                 cmd = "nice -n 15 "+ scriptpath + " >> " + logfile + " 2>&1 "
                 cmd = "ssh " + node + " -C \"" + cmd + "\""
-                print "DesktopJobRunner(%s, %s,  starting, %s / %s, %s)" % (strftime("%Y-%m-%d %H:%M:%S"), node, subjobnum, len(joblist), logfile)
+                print "DesktopJobRunner(%s, %s,  starting, %s / %s, %s)" % (strftime("%Y-%m-%d %H:%M:%S"), node, subjobnum, njobs, logfile)
                 subprocess.check_call(cmd, shell=True)
-                print "DesktopJobRunner(%s, %s, completed, %s / %s, %s)" % (strftime("%Y-%m-%d %H:%M:%S"), node, subjobnum, len(joblist), logfile)
+                print "DesktopJobRunner(%s, %s, completed, %s / %s, %s)" % (strftime("%Y-%m-%d %H:%M:%S"), node, subjobnum, njobs, logfile)
+        except Empty:
+            # queue is empty, nothing left to do
+            pass
         except Exception as ex:
             print "ERROR ", node, "jobs failed."
             print ex
@@ -175,12 +172,13 @@ class _NodeJobRunner:
 
 def _unitTestDesktopJob():
     jobs = []
-    for i in xrange(10):
+    machines = DesktopDefs.t2kMachines
+    for i in xrange(1*len(machines)):
         cmd = "echo Test desktop job submission "+str(i)
         cmd += "\nsleep 5;\necho Job "+str(i)+" done."
         j = DesktopJob("job"+str(i), cmd, workingDirectory="./")
         jobs.append(j)
-    job = DesktopJobRunner(jobs, machineList=DesktopDefs.t2kMachines)
+    job = DesktopJobRunner(jobs, machineList=machines)
     job.submit()
 
 ###############################################################################
