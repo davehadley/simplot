@@ -158,14 +158,16 @@ class _NodeJobRunner:
                 cmd = "nice -n 15 "+ scriptpath + " >> " + logfile + " 2>&1 "
                 cmd = "ssh " + node + " -C \"" + cmd + "\""
                 print "DesktopJobRunner(%s, %s,  starting, %s / %s, %s)" % (strftime("%Y-%m-%d %H:%M:%S"), node, subjobnum, njobs, logfile)
-                subprocess.check_call(cmd, shell=True)
-                print "DesktopJobRunner(%s, %s, completed, %s / %s, %s)" % (strftime("%Y-%m-%d %H:%M:%S"), node, subjobnum, njobs, logfile)
+                try:
+                    subprocess.check_call(cmd, shell=True)
+                except Exception as ex:
+                    print "ERROR ", node, "jobs failed."
+                    print ex
+                else:
+                    print "DesktopJobRunner(%s, %s, completed, %s / %s, %s)" % (strftime("%Y-%m-%d %H:%M:%S"), node, subjobnum, njobs, logfile)
         except Empty:
             # queue is empty, nothing left to do
             pass
-        except Exception as ex:
-            print "ERROR ", node, "jobs failed."
-            print ex
         return
 
 ###############################################################################
@@ -173,7 +175,7 @@ class _NodeJobRunner:
 def _unitTestDesktopJob():
     jobs = []
     machines = DesktopDefs.t2kMachines
-    for i in xrange(1*len(machines)):
+    for i in xrange(3*len(machines)):
         cmd = "echo Test desktop job submission "+str(i)
         cmd += "\nsleep 5;\necho Job "+str(i)+" done."
         j = DesktopJob("job"+str(i), cmd, workingDirectory="./")
