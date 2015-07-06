@@ -6,6 +6,10 @@ import itertools
 import numpy
 from . import palette
 
+try:
+    from collections import OrderedDict
+except ImportError:
+    OrderedDict = dict
 
 ###############################################################################
 
@@ -170,7 +174,7 @@ class SplitDataset:
         :param cuts: an optional dictionary with key=name of sub-dataset and values=a drawOptions.Cut object that defined the selection for this subset of data.
         :type cuts: dict
         """
-        self.cuts = dict()
+        self.cuts = OrderedDict()
         self.nameList = []
         if cuts:
             keys = cuts.keys()

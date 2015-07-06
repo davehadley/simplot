@@ -413,7 +413,7 @@ class HistogramCollection:
     def __init__(self, name, title):
         self.name = name
         self.title = title
-        self.hist = dict()
+        self.hist = OrderedDict()
         self.nameList = list()
         
     def __iter__(self):
@@ -860,7 +860,7 @@ class HistogramCollectionPainter:
         """
         treatAsData = self._findOption(drawoptions.TreatAsData, default=drawoptions.TreatAsData())
         self.drawnHistograms = OrderedDict()
-        for name,hist in self.histCol:
+        for name,hist in reversed(self.histCol):
             #print "drawing",key,hist,hist.GetEntries()
             opts = ["SAME"]
             if name in treatAsData:
@@ -927,7 +927,7 @@ class HistogramCollectionPainter:
         treatAsData = self._findOption(drawoptions.TreatAsData, default=drawoptions.TreatAsData())
         #now draw the stacked histograms
         self.drawnHistograms = OrderedDict()
-        for name in self.orderedNames:
+        for name in reversed(self.orderedNames):
             hist = self.stackedCol[name]
             opts = ["SAME"]
             if name in treatAsData:
