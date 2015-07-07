@@ -462,6 +462,9 @@ class HistogramCollection:
 
     #def getZMax(self):
     #    return self.zMax
+
+    def __reversed__(self):
+        return reversed(self.hist.items())
     
     def __getitem__(self, name):
         return self.hist[name]
@@ -860,7 +863,7 @@ class HistogramCollectionPainter:
         """
         treatAsData = self._findOption(drawoptions.TreatAsData, default=drawoptions.TreatAsData())
         self.drawnHistograms = OrderedDict()
-        for name,hist in reversed(self.histCol):
+        for name, hist in reversed(self.histCol):
             #print "drawing",key,hist,hist.GetEntries()
             opts = ["SAME"]
             if name in treatAsData:
