@@ -9,13 +9,107 @@ class Stats:
 
 ###############################################################################
 
+def _countnd(obj):
+        count = 0
+        try:
+            a = obj
+            while True:
+                a = a[0]
+                count += 1
+        except Exception:
+            pass
+        return count
+
+###############################################################################
+
+class HistogramND(object):
+    def __init__(self, binning, values, label=None):
+        #check dimensionality of input objects matches the given nd
+        if _countnd(binning) == 1:
+            binning = (binning,)
+        nd = len(binning)
+        ndv = _countnd(values)
+        if not (nd == ndv):
+            raise Exception("HistogramND inputs have inconsistent dimensionality", nd, ndv)
+        #convert input label into HigtogramNDLabel object
+        if label is None:
+            label = HistogramNDLabel(binning)
+        elif isinstance(label, basestring):
+            label = HistogramNDLabel(binning, label=label)
+        self.nd = nd
+        self.binning = binning
+        self.values = values
+        self.label = label
+
+    @property
+    def xbinning(self):
+        """convenient for plotting code that only plots 1D histograms."""
+        return self.binning[0]
+
+    @property
+    def ybinning(self):
+        """convenient for plotting code that only plots 1D histograms."""
+        return self.binning[1]
+
+###############################################################################
+
+class HistogramNDLabel(object):
+    def __init__(self, binning, label=None, axislabels=None, axisunits=None, binlabels=None):
+        if _countnd(binning) == 1:
+            binning = (binning,)
+        nd = len(binning)
+        #guarantee labels have required dimensionality
+        if axislabels is None:
+            axislabels = tuple([None] * (nd + 1))
+        if axisunits is None:
+            axisunits = tuple([None] * (nd + 1))
+        if isinstance(axislabels, basestring):
+            axislabels = (axislabels, None)
+        if isinstance(axisunits, basestring):
+            axisunits = (axisunits, None)
+        #special case, axes are labelled except for the histogram value axis
+        if len(axislabels) == nd:
+            axislabels = tuple(list(axislabels) + [None])
+        if len(axisunits) == nd:
+            axislabels = tuple(list(axisunits) + [None])
+        if not len(axislabels) == nd + 1:
+            raise Exception("wrong number of axis labels given", nd, axislabels)
+        if not len(axisunits) == nd + 1:
+            raise Exception("wrong number of axis units given", nd, axisunits)
+        #setup bin labels
+        if binlabels is None:
+            binlabels = [None] * nd
+        else:
+            for label in binlabels:
+                if isinstance(label, basestring):
+                    binlabels = [binlabels]
+                    break
+        if not len(binlabels) == nd:
+            raise Exception("wrong dimensionality for bin labels", nd, len(binlabels))
+        #store values
+        self.nd = nd
+        self.label = label
+        self.axislabels = axislabels
+        self.axisunits = axisunits
+        self.binlabels = binlabels
+
+    def getbinlabel(self, binnum, axis=0):
+        ret = None
+        labels = self.binlabels[axis]
+        if labels is not None:
+            ret = labels[binnum]
+        return ret
+            
+
+###############################################################################
+
 def _get_binning_array(xbinning):
     try:
         b = xbinning.binedges
     except AttributeError:
         #object does not have binedges attribute, 
         #assume that we were given an array-like of bin edges. 
-        b = xbinning
+        b = numpy.array(xbinning, dtype=float)
     return b
 
 ###############################################################################
@@ -29,7 +123,6 @@ def _get_bin_widths(b):
     return (b[1:] - b[:-1])
 
 ###############################################################################
-
 
 def plot_hist_points(ax, xbinning, y, yerr=None, 
               yerrmode=Stats.gaussian,
@@ -76,6 +169,28 @@ def plot_hist_bars(ax, xbinning, y,
     weights = y
     return ax.hist(x, bins=binedges, weights=weights,
                    *args, **kwargs)
+
+###############################################################################
+
+def plot_hist_lines(ax, xbinning, y, *args, **kwargs):
+    binedges = _get_binning_array(xbinning)
+    xline = []
+    yline = []
+    for ii in xrange(len(binedges)):
+            eb = binedges[ii]
+            xline.append(eb)
+            xline.append(eb)
+            try:
+                low = y[ii-1]
+            except IndexError:
+                low = 0.0
+            try:
+                high = y[ii]
+            except IndexError:
+                high = 0.0
+            yline.append(low)
+            yline.append(high)
+    return ax.plot(xline, yline, *args, **kwargs)
 
 ###############################################################################
 
