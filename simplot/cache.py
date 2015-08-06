@@ -4,9 +4,11 @@ import numpy
 import cPickle as pickle
 import ROOT
 
+_DEFAULT_TMPDIR = "/tmp/simplot_cache"
+
 ###############################################################################
 
-def cache(uniquestr, callable_, filelist=None):
+def cache(uniquestr, callable_, filelist=None, tmpdir=_DEFAULT_TMPDIR):
     '''A simple interface for CacheNumpy object.
     If a cache already exists it reads it,
     otherwise is evaluates the callable_ (with no arguments)
@@ -14,7 +16,7 @@ def cache(uniquestr, callable_, filelist=None):
     If a filelist is given, compares the file modification times to the cache file.
     If he files have been modified since the cache was written, then the cache is overriden. 
     '''
-    cn = CachePickle(uniquestr)
+    cn = CachePickle(uniquestr, tmpdir=tmpdir)
     if cn.exists() and (filelist is None or cn.newerthan(*filelist)):
         data = cn.read()
     else:
@@ -22,7 +24,7 @@ def cache(uniquestr, callable_, filelist=None):
         cn.write(data)
     return data    
 
-def cache_numpy(uniquestr, callable_, filelist=None):
+def cache_numpy(uniquestr, callable_, filelist=None, tmpdir=_DEFAULT_TMPDIR):
     '''As cache but for numpy arrays. 
     '''
     cn = CacheNumpy(uniquestr)
@@ -33,7 +35,7 @@ def cache_numpy(uniquestr, callable_, filelist=None):
         cn.write(data)
     return data
 
-def cache_root(uniquestr, callable_, filelist=None):
+def cache_root(uniquestr, callable_, filelist=None, tmpdir=_DEFAULT_TMPDIR):
     cn = CacheRoot(uniquestr)
     if cn.exists() and (filelist is None or cn.newerthan(*filelist)):
         data = cn.read()
@@ -45,7 +47,7 @@ def cache_root(uniquestr, callable_, filelist=None):
 ###############################################################################
 
 class Cache(object):
-    def __init__(self, uniquestr, prefix="tmp", postfix=".bin", tmpdir="/tmp/simplot_cache"):
+    def __init__(self, uniquestr, prefix="tmp", postfix=".bin", tmpdir=_DEFAULT_TMPDIR):
         self._uniquestr = uniquestr
         self._tmpdir = tmpdir
         self._prefix = prefix
@@ -80,7 +82,7 @@ class Cache(object):
 ###############################################################################
 
 class CacheNumpy(Cache):
-    def __init__(self, uniquestr, prefix="tmp", tmpdir="/tmp/simplot_cache"):
+    def __init__(self, uniquestr, prefix="tmp", tmpdir=_DEFAULT_TMPDIR):
         super(CacheNumpy, self).__init__(uniquestr=uniquestr, prefix=prefix, tmpdir=tmpdir)
     
     def read(self):
@@ -97,7 +99,7 @@ class CacheNumpy(Cache):
 ###############################################################################
 
 class CacheRoot(Cache):
-    def __init__(self, uniquestr, prefix="tmp", tmpdir="/tmp/simplot_cache", usepickle=True):
+    def __init__(self, uniquestr, prefix="tmp", tmpdir=_DEFAULT_TMPDIR, usepickle=True):
         super(CacheRoot, self).__init__(uniquestr=uniquestr, prefix=prefix, tmpdir=tmpdir, postfix=".root")
         self._usepickle = usepickle
     
@@ -143,7 +145,7 @@ class CacheRoot(Cache):
 ###############################################################################
 
 class CachePickle(Cache):
-    def __init__(self, uniquestr, prefix="tmp", tmpdir="/tmp/simplot_cache"):
+    def __init__(self, uniquestr, prefix="tmp", tmpdir=_DEFAULT_TMPDIR):
         super(CachePickle, self).__init__(uniquestr=uniquestr, prefix=prefix, tmpdir=tmpdir)
     
     def read(self):
