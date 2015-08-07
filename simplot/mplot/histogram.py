@@ -1,4 +1,4 @@
-import numpy
+import numpy as np
 import math
 
 ###############################################################################
@@ -23,11 +23,14 @@ def _countnd(obj):
 ###############################################################################
 
 class HistogramND(object):
-    def __init__(self, binning, values, label=None):
+    def __init__(self, binning, values=None, label=None):
         #check dimensionality of input objects matches the given nd
         if _countnd(binning) == 1:
             binning = (binning,)
         nd = len(binning)
+        if values is None:
+            shape = (len(b)-1 for b in binning)
+            values = np.zeroes(shape=shape)
         ndv = _countnd(values)
         if not (nd == ndv):
             raise Exception("HistogramND inputs have inconsistent dimensionality", nd, ndv)
@@ -50,6 +53,9 @@ class HistogramND(object):
     def ybinning(self):
         """convenient for plotting code that only plots 1D histograms."""
         return self.binning[1]
+
+    def fill(self, coord, weight=1.0):
+        self.values[coord] += weight
 
 ###############################################################################
 
@@ -98,8 +104,7 @@ class HistogramNDLabel(object):
         labels = self.binlabels[axis]
         if labels is not None:
             ret = labels[binnum]
-        return ret
-            
+        return ret            
 
 ###############################################################################
 
@@ -109,7 +114,7 @@ def _get_binning_array(xbinning):
     except AttributeError:
         #object does not have binedges attribute, 
         #assume that we were given an array-like of bin edges. 
-        b = numpy.array(xbinning, dtype=float)
+        b = np.array(xbinning, dtype=float)
     return b
 
 ###############################################################################
@@ -141,7 +146,7 @@ def plot_hist_points(ax, xbinning, y, yerr=None,
         #if no yerr is given assume sqrt(N)
         if yerrmode == Stats.gaussian:
             #TODO deal with weights correctly
-            yerr = numpy.sqrt(y) 
+            yerr = np.sqrt(y) 
         #if no yerr is given assume poisson statistics
         elif yerrmode == Stats.poisson:
             #TODO implement Poisson errors
@@ -149,7 +154,7 @@ def plot_hist_points(ax, xbinning, y, yerr=None,
     if not show_empty_bins:
         #filter out bins with zero content
         filtered = filter(lambda v: v[2]!=0.0, zip(x, xerr, y, yerr))
-        x, xerr, y, yerr = map(numpy.array, zip(*filtered))
+        x, xerr, y, yerr = map(np.array, zip(*filtered))
     #draw the plot
     (plotline, caplines, barlinecols) = ax.errorbar(x, y, yerr=yerr, xerr=xerr,
                                                     color=color,
@@ -195,14 +200,13 @@ def plot_hist_lines(ax, xbinning, y, *args, **kwargs):
 ###############################################################################
 
 def _test_plot_hist():
-    import numpy
     from nuOscillation.model import binning
     import matplotlib.pyplot as plt
     fig = plt.figure()
     ax = fig.add_subplot(1, 1, 1)
-    dataset = numpy.random.normal(size=100)
+    dataset = np.random.normal(size=100)
     xbinning = binning.Binning(10, -5.0, 5.0)
-    y, binedges = numpy.histogram(dataset, xbinning.binedges)
+    y, binedges = np.histogram(dataset, xbinning.binedges)
     plot_hist_points(ax, xbinning, y)
     plot_hist_bars(ax, xbinning, y)
     plt.show()
