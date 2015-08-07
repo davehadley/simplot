@@ -1,7 +1,7 @@
 import unittest
 import numpy
 
-import simplot.binning as binning
+import simplot.mplot.binning as binning
 
 class BinningTests(unittest.TestCase):
     def testComparisonOperator(self):
