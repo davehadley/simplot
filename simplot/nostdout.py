@@ -26,27 +26,3 @@ def nostdout(stdout=True, stderr=True):
     finally:
         sys.stdout = savestdout
         sys.stderr = savestderr
-
-def _test_stdout():
-    print >>sys.stdout, "TEST stdout message"
-
-def _test_stderr():
-    print >>sys.stderr, "TEST stderr message"
-
-def main():
-    print "Messages ON"
-    _test_stdout()
-    _test_stderr()
-    print "Messages OFF"
-    with nostdout(stdout=True, stderr=False):
-        _test_stdout()
-    with nostdout(stdout=False, stderr=True):
-        _test_stderr()
-    print "Messages ON"
-    _test_stdout()
-    _test_stderr()
-    print "done."
-    return
-
-if __name__ == "__main__":
-    main()
