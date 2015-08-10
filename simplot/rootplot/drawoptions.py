@@ -914,5 +914,7 @@ _allValidOptionsTypes = set([EventWeight,
                              Format,
                              Normalisation,
                              AxisScale,
+                             BinLabels,
+                             ShowOverflow,
                              ]
                             )

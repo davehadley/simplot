@@ -43,6 +43,7 @@ class FigureWriter:
             self._make_parent_dir(fname)
             print "Saving",fname
             fig.savefig(fname)
+        plt.close(fig)
         return
     
     def _make_parent_dir(self, fname):

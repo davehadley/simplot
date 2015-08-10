@@ -71,3 +71,8 @@ class Binning:
                         edgesstr,
                         ")",
                        ))
+
+    @property
+    def binedges(self):
+        return self._binedges
+
