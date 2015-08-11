@@ -84,7 +84,7 @@ class HistogramCollectionPainter:
             for h in hists.itervalues():
                 bw = _get_bin_widths(h.xbinning)
                 h.values = h.values / bw
-                h.scale(1.0/dbw.scale)
+                h.scale(dbw.scale)
         return hists
 
 ###############################################################################
