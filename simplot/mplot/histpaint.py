@@ -31,6 +31,7 @@ class HistogramCollectionPainter:
         hists = hclone
         #draw histograms
         hists = self._showoverflow(hists, options)
+        hists = self._dividebinwidth(hists, options)
         hists = self._normalisehistograms(hists, options)
         hists = self._buildstack(hists, options)
         hists, fig = self._drawhistograms(hists, options, ax=ax)
@@ -77,6 +78,14 @@ class HistogramCollectionPainter:
                 h.overflowsumw2 = 0.0
         return hists
 
+    def _dividebinwidth(self, hists, options):
+        dbw = self._findoption(drawoptions.DivideByBinWidth, options, default=None)
+        if dbw is not None and dbw.flag:
+            for h in hists.itervalues():
+                bw = _get_bin_widths(h.xbinning)
+                h.values = h.values / bw
+                h.scale(1.0/dbw.scale)
+        return hists
 
 ###############################################################################
 

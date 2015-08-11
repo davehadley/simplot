@@ -892,6 +892,13 @@ class ShowOverflow:
     def __init__(self, flag):
         self.flag = flag
 
+###############################################################################
+
+class DivideByBinWidth:
+    def __init__(self, flag=True, scale=1.0):
+        self.flag = flag
+        self.scale = scale
+
 ###############################################################################    
     
 _allValidOptionsTypes = set([EventWeight, 
@@ -916,5 +923,6 @@ _allValidOptionsTypes = set([EventWeight,
                              AxisScale,
                              BinLabels,
                              ShowOverflow,
+                             DivideByBinWidth,
                              ]
                             )
