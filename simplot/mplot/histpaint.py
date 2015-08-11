@@ -18,7 +18,10 @@ class HistogramCollectionPainter:
     def __init__(self):
         pass
 
-    def paint(self, hists, *options):
+    def paint(self, hists, *options, **kwargs):
+        ax = None
+        if "ax" in kwargs:
+            ax = kwargs["ax"]
         if not drawtools._checkAllOptionsAreValid(options):
             raise Exception("Invalid option provided", options)
         #clone input histograms
@@ -30,7 +33,7 @@ class HistogramCollectionPainter:
         hists = self._showoverflow(hists, options)
         hists = self._normalisehistograms(hists, options)
         hists = self._buildstack(hists, options)
-        hists, fig = self._drawhistograms(hists, options)
+        hists, fig = self._drawhistograms(hists, options, ax=ax)
         return fig
 
     def _findoption(self, opttype, options, default=None):
@@ -51,7 +54,7 @@ class HistogramCollectionPainter:
         hists = st.stack(hists, stack, treatasdata)
         return hists
 
-    def _drawhistograms(self, hists, options):
+    def _drawhistograms(self, hists, options, ax=None):
         formatter = self._findoption(drawoptions.Stack, options, default=None)
         treatasdata = self._findoption(drawoptions.TreatAsData, options, default=drawoptions.TreatAsData())
         canvassize = self._findoption(drawoptions.CanvasSize, options, default=None)
@@ -61,7 +64,7 @@ class HistogramCollectionPainter:
         framerange = self._findoption(drawoptions.FrameRange, options, default=None)
         legendposition = self._findoption(drawoptions.LegendPosition, options, default=None)
         dt = _DrawTool()
-        return dt.draw(hists, treatasdata, formatter, canvassize, axislabels, binlabels, axisscale, framerange, legendposition)
+        return dt.draw(hists, treatasdata, formatter, canvassize, axislabels, binlabels, axisscale, framerange, legendposition, ax=ax)
 
     def _showoverflow(self, hists, options):
         showoverflow = self._findoption(drawoptions.ShowOverflow, options, default=None)
@@ -200,15 +203,19 @@ class _DrawTool:
     def __init__(self, ):
         pass
 
-    def draw(self, hists, treatasdata, formatter, canvassize, axislabels, binlabels, axisscale, framerange, legendpos):
-        fig, ax = self._build_figure(canvassize)
+    def draw(self, hists, treatasdata, formatter, canvassize, axislabels, binlabels, axisscale, framerange, legendpos, ax=None):
+        if ax is None:
+            fig, ax = self._build_figure(canvassize)
+        else:
+            fig = None
         self._draw_hists(ax, hists, treatasdata)
         self._label_axes(ax, hists, axislabels, binlabels)
         self._draw_legend(ax, legendpos)
         self._setscale(ax, axisscale)
         #re-optimise the figure layout once everything has been drawn
         self._setframerange(ax, framerange)
-        fig.tight_layout()
+        if fig:
+            fig.tight_layout()
         return hists, fig
 
 #    def _draw_legend(self, ax, legendpos):
@@ -375,7 +382,7 @@ def plot_hist_points(ax, xbinning, y, yerr=None,
         #if no yerr is given assume sqrt(N)
         if yerrmode == Stats.gaussian:
             #TODO deal with weights correctly
-            yerr = np.sqrt(y) 
+            yerr = np.sqrt(y)
         #if no yerr is given assume poisson statistics
         elif yerrmode == Stats.poisson:
             #TODO implement Poisson errors
