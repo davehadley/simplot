@@ -1,106 +1,170 @@
-import numpy
+import numpy as np
 import math
+import copy
+
+from bisect import bisect_right
 
 ###############################################################################
 
-class Stats:
-    poisson = "poisson"
-    gaussian = "gaussian" 
-
-###############################################################################
-
-def _get_binning_array(xbinning):
+def _countnd(obj):
+    count = 0
     try:
+        a = obj
+        while True:
+            a = iter(a).next()
+            count += 1
+    except Exception:
+        pass
+    return count
+
+###############################################################################
+
+class HistogramND(object):
+    def __init__(self, binning, values=None, label=None):
+        self.overflow = 0.0
+        self.overflowsumw2 = 0.0
+        #check dimensionality of input objects matches the given nd
+        if _countnd(binning) == 1:
+            binning = (binning,)
+        nd = len(binning)
+        binning = [get_binning_array(b) for b in binning] #convert to array
+        if values is None:
+            shape = tuple(len(b)-1 for b in binning)
+            values = np.zeros(shape=shape)
+        ndv = _countnd(values)
+        if not (nd == ndv):
+            raise Exception("HistogramND inputs have inconsistent dimensionality", nd, ndv)
+        #convert input label into HigtogramNDLabel object
+        if label is None:
+            label = HistogramNDLabel(binning)
+        elif isinstance(label, basestring):
+            label = HistogramNDLabel(binning, label=label)
+        self.nd = nd
+        self.binning = binning
+        self.values = values
+        self.sumw2 = np.power(values, 2)
+        self.label = label
+
+    @property
+    def xbinning(self):
+        """convenient for plotting code that only plots 1D histograms."""
+        return self.binning[0]
+
+    @property
+    def ybinning(self):
+        """convenient for plotting code that only plots 1D histograms."""
+        return self.binning[1]
+
+    @property
+    def errors(self):
+        return np.sqrt(self.sumw2)
+
+    def fill(self, coord, weight=1.0):
+        index = self.binindex(coord)
+        try:
+            self.values[index] += weight
+            self.sumw2[index] += weight**2
+        except IndexError:
+            self.overflow += weight
+            self.overflowsumw2 += weight**2
+
+    def setbin(self, index, value):
+        self.values[index] = value
+
+    def getbin(self, index):
+        return self.values[index]
+
+    def eval(self, coord):
+        index = self.binindex(coord)
+        return self.getbin(index)
+
+    def binindex(self, coord):
+        if isinstance(coord, float):
+            coord = (coord,)
+        return tuple(self._findbin(self.binning[i], x) for i,x in enumerate(coord))
+
+    def _findbin(self, array, x):
+        return bisect_right(array, x) - 1
+
+    def scale(self, scale):
+        self.values *= scale
+        self.sumw2 *= scale**2
+        self.overflow *= scale
+        self.overflowsumw2 *= scale**2
+        return
+
+    def sum(self):
+        return np.sum(self.values)
+
+    def add(self, hist):
+        self.values += hist.values
+        self.sumw2 += hist.sumw2
+        self.overflow += hist.overflow
+        self.overflowsumw2 += hist.overflowsumw2
+
+    def clone(self):
+        return copy.deepcopy(self)
+
+###############################################################################
+
+class HistogramNDLabel(object):
+    def __init__(self, binning, label=None, axislabels=None, axisunits=None, binlabels=None):
+        if _countnd(binning) == 1:
+            binning = (binning,)
+        nd = len(binning)
+        #guarantee labels have required dimensionality
+        if axislabels is None:
+            axislabels = tuple([None] * (nd + 1))
+        if axisunits is None:
+            axisunits = tuple([None] * (nd + 1))
+        if isinstance(axislabels, basestring):
+            axislabels = (axislabels, None)
+        if isinstance(axisunits, basestring):
+            axisunits = (axisunits, None)
+        #special case, axes are labelled except for the histogram value axis
+        if len(axislabels) == nd:
+            axislabels = tuple(list(axislabels) + [None])
+        if len(axisunits) == nd:
+            axislabels = tuple(list(axisunits) + [None])
+        if not len(axislabels) == nd + 1:
+            raise Exception("wrong number of axis labels given", nd, axislabels)
+        if not len(axisunits) == nd + 1:
+            raise Exception("wrong number of axis units given", nd, axisunits)
+        #setup bin labels
+        if binlabels is None:
+            binlabels = [None] * nd
+        else:
+            for label in binlabels:
+                if isinstance(label, basestring):
+                    binlabels = [binlabels]
+                    break
+        if not len(binlabels) == nd:
+            raise Exception("wrong dimensionality for bin labels", nd, len(binlabels))
+        #store values
+        self.nd = nd
+        self.label = label
+        self.axislabels = axislabels
+        self.axisunits = axisunits
+        self.binlabels = binlabels
+
+    def getbinlabel(self, binnum, axis=0):
+        ret = None
+        labels = self.binlabels[axis]
+        if labels is not None:
+            ret = labels[binnum]
+        return ret            
+
+
+###############################################################################
+
+def get_binning_array(xbinning):
+    try:
+        #may be a complex object that provide binedges
         b = xbinning.binedges
     except AttributeError:
         #object does not have binedges attribute, 
         #assume that we were given an array-like of bin edges. 
-        b = xbinning
+        b = np.array(xbinning, dtype=float)
     return b
 
-###############################################################################
 
-def _get_bin_centres(b):
-    return (b[1:] + b[:-1]) / 2.0
-
-###############################################################################
-
-def _get_bin_widths(b):
-    return (b[1:] - b[:-1])
-
-###############################################################################
-
-
-def plot_hist_points(ax, xbinning, y, yerr=None, 
-              yerrmode=Stats.gaussian,
-              color="black",
-              marker="o",
-              markersize=10.0,
-              linestyle="None",
-              show_empty_bins=False,
-              *args, **kwargs):
-    b = _get_binning_array(xbinning)
-    #bin centers
-    x = _get_bin_centres(b)
-    #"xerr" is 1/2 bin width
-    xerr = _get_bin_widths(b) / 2.0
-    if yerr is None:
-        #if no yerr is given assume sqrt(N)
-        if yerrmode == Stats.gaussian:
-            #TODO deal with weights correctly
-            yerr = numpy.sqrt(y) 
-        #if no yerr is given assume poisson statistics
-        elif yerrmode == Stats.poisson:
-            #TODO implement Poisson errors
-            raise NotImplementedError()
-    if not show_empty_bins:
-        #filter out bins with zero content
-        filtered = filter(lambda v: v[2]!=0.0, zip(x, xerr, y, yerr))
-        x, xerr, y, yerr = map(numpy.array, zip(*filtered))
-    #draw the plot
-    (plotline, caplines, barlinecols) = ax.errorbar(x, y, yerr=yerr, xerr=xerr,
-                                                    color=color,
-                                                    marker=marker,
-                                                    markersize=markersize,
-                                                    linestyle=linestyle,
-                                                    *args, **kwargs)
-    return (plotline, caplines, barlinecols)
-
-###############################################################################
-
-def plot_hist_bars(ax, xbinning, y,
-                   *args, **kwargs):
-    #convert the input data for passing to Axes.hist
-    binedges = _get_binning_array(xbinning)
-    x = _get_bin_centres(binedges)
-    weights = y
-    return ax.hist(x, bins=binedges, weights=weights,
-                   *args, **kwargs)
-
-###############################################################################
-
-def _test_plot_hist():
-    import numpy
-    from nuOscillation.model import binning
-    import matplotlib.pyplot as plt
-    fig = plt.figure()
-    ax = fig.add_subplot(1, 1, 1)
-    dataset = numpy.random.normal(size=100)
-    xbinning = binning.Binning(10, -5.0, 5.0)
-    y, binedges = numpy.histogram(dataset, xbinning.binedges)
-    plot_hist_points(ax, xbinning, y)
-    plot_hist_bars(ax, xbinning, y)
-    plt.show()
-    raw_input("wait")
-    return
-
-###############################################################################
-
-def main():
-    _test_plot_hist()
-    return
-
-###############################################################################
-
-if __name__ == "__main__":
-    main()
