@@ -1,4 +1,4 @@
 #!/bin/bash
 
-TESTPACKAGE=${SIMPLOTROOT}/test
-python -m unittest discover ${TESTPACKAGE}
+python -m unittest discover simplot.test
+
