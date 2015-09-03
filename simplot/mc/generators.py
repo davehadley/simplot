@@ -17,7 +17,7 @@ class Generator(object):
     """Interface for generators. The generators must implement _generate()."""
     def __init__(self, parameter_names, start_values):
         self.parameter_names = list(parameter_names)
-        self.start_values = np.array(start_values)
+        self.start_values = np.array(start_values, copy=True)
         self._fixed = {}
         self._verify_generator()
 
@@ -84,8 +84,8 @@ class Generator(object):
 class GaussianGenerator(Generator):
     def __init__(self, parameter_names, mu, sigma, seed=None):
         super(GaussianGenerator, self).__init__(parameter_names, start_values=mu)
-        self._mu = np.array(mu)
-        self._sigma = np.array(sigma)
+        self._mu = np.array(mu, copy=True)
+        self._sigma = np.array(sigma, copy=True)
         self._rng = np.random.RandomState(seed=seed)
         self._verify()
 
@@ -176,10 +176,10 @@ class GeneratorList(Generator):
 class MultiVariateGaussianGenerator(Generator):
     def __init__(self, parameter_names, mu, cov, seed=None):
         super(MultiVariateGaussianGenerator, self).__init__(parameter_names, start_values=mu)
-        self._mu = np.array(mu)
-        self._cov = np.array(cov)
+        self._mu = np.array(mu, copy=True)
+        self._cov = np.array(cov, copy=True)
         self._sigma = np.sqrt(np.diag(self._cov))
-        self._decomp = EigenDecomposition(cov)
+        self._decomp = EigenDecomposition(self._cov)
         self._eigensigma = np.sqrt(self._decomp.eigenvalues)
         self._rng = np.random.RandomState(seed=seed)
         self._verify()
