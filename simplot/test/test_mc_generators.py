@@ -14,7 +14,7 @@ class TestGenerators(unittest.TestCase):
         self.names = ["par_"+str(m) for m in self.mu]
         self.cov = np.zeros(shape=(len(self.mu), len(self.mu)))
         for ii, jj in itertools.product(xrange(len(self.mu)), repeat=2):
-            cor = 0.0000
+            cor = 0.9
             self.cov[ii,jj] = cor**(abs(ii-jj)) * self.sigma[ii]*self.sigma[jj]
         return
 
@@ -90,9 +90,9 @@ class TestGenerators(unittest.TestCase):
         gnames = ["gaus"+n for n in names]
         cnames = ["const"+n for n in names]
         mnames = ["multigaus"+n for n in names]
-        gengaus = GaussianGenerator(gnames, mu, sigma)
+        gengaus = GaussianGenerator(gnames, mu, sigma, seed=12021)
         genconst = ConstantGenerator(cnames, mu)
-        genmulti = MultiVariateGaussianGenerator(mnames, mu, cov)
+        genmulti = MultiVariateGaussianGenerator(mnames, mu, cov, seed=2314)
         gen = GeneratorList(gengaus, genconst, genmulti)
         #generate data
         npe = 10**4
