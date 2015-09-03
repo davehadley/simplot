@@ -8,12 +8,21 @@ import os
 os.environ["CC"] = "g++"
 os.environ["CXX"] = "g++"
 
+language = "c++"
+extra_compile_args=["-std=c++11", "-O3"]
+extra_link_args=["-std=c++11", "-O3"]
+
 
 modules = [Extension("simplot.rootplot.cmerge",
                      ["simplot/rootplot/cmerge.pyx"],
-                     language = "c++",
-                     extra_compile_args=["-std=c++11", "-O3"],
-                     extra_link_args=["-std=c++11", "-O3"]),
+                     language = language,
+                     extra_compile_args=extra_compile_args,
+                     extra_link_args=extra_link_args),
+           Extension("simplot.mc.generators",
+                     ["simplot/mc/generators.pyx"],
+                     language = language,
+                     extra_compile_args=extra_compile_args,
+                     extra_link_args=extra_link_args),
 ]
 
 setup(name="simplot",
