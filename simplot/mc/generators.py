@@ -18,6 +18,7 @@ class Generator(object):
     def __init__(self, parameter_names, start_values):
         self.parameter_names = list(parameter_names)
         self.start_values = np.array(start_values, copy=True)
+        self.start_values.setflags(write=False)
         self._fixed = {}
         self._verify_generator()
 
@@ -86,6 +87,8 @@ class GaussianGenerator(Generator):
         super(GaussianGenerator, self).__init__(parameter_names, start_values=mu)
         self._mu = np.array(mu, copy=True)
         self._sigma = np.array(sigma, copy=True)
+        self._mu.setflags(write=False)
+        self._sigma.setflags(write=False)
         self._rng = np.random.RandomState(seed=seed)
         self._verify()
 
@@ -181,6 +184,8 @@ class MultiVariateGaussianGenerator(Generator):
         self._sigma = np.sqrt(np.diag(self._cov))
         self._decomp = EigenDecomposition(self._cov)
         self._eigensigma = np.sqrt(self._decomp.eigenvalues)
+        for arr in [self._mu, self._cov, self._sigma, self._eigensigma]:
+            arr.setflags(write=False)
         self._rng = np.random.RandomState(seed=seed)
         self._verify()
 
