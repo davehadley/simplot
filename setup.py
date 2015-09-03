@@ -23,6 +23,12 @@ modules = [Extension("simplot.rootplot.cmerge",
 #                     language = language,
 #                     extra_compile_args=extra_compile_args,
 #                     extra_link_args=extra_link_args),
+           Extension("simplot.mc.clikelihood",
+                     ["simplot/mc/clikelihood.pyx"],
+                     language = language,
+                     extra_compile_args=extra_compile_args,
+                     extra_link_args=extra_link_args),
+
 ]
 
 setup(name="simplot",
