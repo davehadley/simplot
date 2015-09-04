@@ -10,7 +10,7 @@ from simplot.mc.generators import GaussianGenerator
 from simplot.mc.montecarlo import ToyMC
 from simplot.mc.statistics import calculate_statistics_from_toymc, Mean, StandardDeviation, FractionalStandardDeviation, Covariance
 
-class TestCase(unittest.TestCase):
+class TestMonteCarlo(unittest.TestCase):
     def setUp(self):
         names = ["a", "b"]
         def simplemodel(pars):
