@@ -4,7 +4,7 @@ import unittest
 
 import numpy as np
 
-from simplot.mc.likelihood import Minus2LnLikehood, ConstantLikelihood, MultiVariateGaussianLikelihood, GaussianLikelihood, SumLikelihood, CombinedLikelihood, LikelihoodParametersMismatch
+from simplot.mc.likelihood import Minus2LnLikehood, ConstantLikelihood, MultiVariateGaussianLikelihood, GaussianLikelihood, SumLikelihood, CombinedLikelihood, EventRateLikelihood, LikelihoodParametersMismatch
 
 class TestLikelihood(unittest.TestCase):
 
@@ -111,6 +111,23 @@ class TestLikelihood(unittest.TestCase):
                 else:
                     expected = 0.0
                 self.assertEquals(expected, l)
+            pars[i] = mu[i]
+        return
+
+    def test_eventratelikelihood(self):
+        mu = np.linspace(1e9, 1e10) # use large numbers to be very close to gaussian
+        names = ["par" + str(int(m)) for m in mu]
+        def model(x):
+            return np.array(x)
+        model.parameter_names = names
+        lhd = Minus2LnLikehood(EventRateLikelihood(model, mu))
+        pars = np.array(mu, dtype=float)
+        for i in xrange(len(mu)):
+            for nsigma in xrange(-3, 4):
+                pars[i] = mu[i] + nsigma*np.sqrt(mu[i])
+                l = lhd(pars)
+                expected = nsigma**2 # gaussian approximation (not exact)
+                self.assertAlmostEquals(expected, l, delta=1e-3)
             pars[i] = mu[i]
         return
 

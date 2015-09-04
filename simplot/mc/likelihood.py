@@ -1,6 +1,6 @@
 import numpy as np
 
-import clikelihood
+from clikelihood import gaus_log_density, poisson_log_density
 
 ################################################################################
 
@@ -62,7 +62,7 @@ class GaussianLikelihood(Likelihood):
         self._checksize(x)
         mu = self._mu
         sigma = self._sigma
-        return clikelihood.gaus_log_density(x, mu, sigma)
+        return gaus_log_density(x, mu, sigma)
 
 ################################################################################
 
@@ -128,3 +128,18 @@ class CombinedLikelihood(Likelihood):
     def __call__(self, x):
         self._checksize(x)
         return sum(f(x[start:stop]) for f, start, stop in self._funcs)
+
+################################################################################
+
+class EventRateLikelihood(Likelihood):
+    def __init__(self, model, data):
+        parameter_names = model.parameter_names
+        self._model = model
+        self._observed = np.copy(data)
+        super(EventRateLikelihood, self).__init__(parameter_names)
+
+    def __call__(self, x):
+        self._checksize(x)
+        observed = self._observed
+        expected = self._model(x)
+        return poisson_log_density(observed, expected)
