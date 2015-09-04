@@ -28,7 +28,11 @@ modules = [Extension("simplot.rootplot.cmerge",
                      language = language,
                      extra_compile_args=extra_compile_args,
                      extra_link_args=extra_link_args),
-
+           Extension("simplot.sparsehist.sparsehist",
+                     ["simplot/sparsehist/unordered_map.pxd", "simplot/sparsehist/sparsehist.pxd", "simplot/sparsehist/sparsehist.pyx"],
+                     language = language,
+                     extra_compile_args=extra_compile_args,
+                     extra_link_args=extra_link_args),
 ]
 
 setup(name="simplot",
