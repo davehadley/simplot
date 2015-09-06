@@ -2,7 +2,6 @@
 import math
 
 import numpy as np
-cimport numpy as np
 import scipy.stats
 
 from simplot.mc.eigendecomp import EigenDecomposition
