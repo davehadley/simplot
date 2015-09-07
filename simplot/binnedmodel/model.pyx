@@ -261,11 +261,11 @@ cdef class ProbabilityCache:
         sdm = None
         ldm = None
         for index, p in enumerate(parnames):
-            if p == "theta12":
+            if p == "theta12" or p == "sinsq2theta12":
                 theta12 = index
-            elif p == "theta23":
+            elif p == "theta23" or p == "sinsq2theta23":
                 theta23 = index
-            elif p == "theta13":
+            elif p == "theta13" or p == "sinsq2theta13":
                 theta13 = index
             elif p == "deltacp":
                 deltacp = index

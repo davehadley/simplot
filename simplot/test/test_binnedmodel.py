@@ -115,7 +115,7 @@ class TestModel(unittest.TestCase):
         if withosc:
             superk = BinnedSampleWithOscillation("superk", binning, observables, itersuperk, "true_energy", "true_nupdg", 295.0, cache_name="superk_" + cachestr)
             model = CombinedBinnedSample([nd280, superk])
-            prior = CombinedPrior([OscillationParametersPrior(), prior])
+            prior = CombinedPrior([prior, OscillationParametersPrior()])
         else:
             model = CombinedBinnedSample([nd280])
         #generate monte carlo
