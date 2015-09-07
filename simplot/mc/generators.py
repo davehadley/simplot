@@ -129,6 +129,25 @@ class ConstantGenerator(Generator):
 
 ###############################################################################
 
+class UniformGenerator(Generator):
+    def __init__(self, parameter_names, value, range_, seed=None):
+        super(UniformGenerator, self).__init__(parameter_names, start_values=value)
+        self._scale = np.array([x[1]-x[0] for x in range_], dtype=float)
+        self._shift = np.array([x[0] for x in range_], dtype=float)
+        self._rng = np.random.RandomState(seed=seed)
+
+    def _generate(self):
+        scale = self._scale
+        shift = self._shift
+        x = self._rng.uniform(size=len(scale))
+        return (scale*x) + shift
+
+    def getsigma(self, parname):
+        index = self.parameter_names.index(parname)
+        return self._scale[index] / np.sqrt(12)
+    
+###############################################################################
+
 class GeneratorList(Generator):
     def __init__(self, *args):
         self._generators = list(args)

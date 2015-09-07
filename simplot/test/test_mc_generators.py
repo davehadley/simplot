@@ -4,7 +4,7 @@ import unittest
 
 import numpy as np
 
-from simplot.mc.generators import GaussianGenerator, MultiVariateGaussianGenerator, ConstantGenerator, GeneratorList
+from simplot.mc.generators import UniformGenerator, GaussianGenerator, MultiVariateGaussianGenerator, ConstantGenerator, GeneratorList
 
 class TestGenerators(unittest.TestCase):
 
@@ -67,8 +67,21 @@ class TestGenerators(unittest.TestCase):
         self._checkcovariance(data, cov=np.diag(np.power(sigma,2)), gen=gen)
         return
 
-    def test_multivargaus(self):
+    def test_uniform(self):
+        mu = np.arange(0, 10, dtype=float)
+        low = np.array([m - 5.0 for m in mu], dtype=float)
+        high = np.array([m + 5.0 for m in mu], dtype=float)
+        sigma = (high - low) / np.sqrt(12)
+        names = ["par"+str(m) for m in mu]
+        gen = UniformGenerator(names, mu, range_=zip(low, high))
+        npe = 10**4
+        data = np.array([gen() for _ in xrange(npe)])
+        self._checkmean(data, mu=mu, sigma=sigma, gen=gen)
+        self._checkstddev(data, sigma=sigma, gen=gen)
+        self._checkcovariance(data, cov=np.diag(np.power(sigma,2)), gen=gen)
         return
+
+    def test_multivargaus(self):
         mu = self.mu
         cov = self.cov
         names = self.names
