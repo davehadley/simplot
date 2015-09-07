@@ -19,7 +19,6 @@ class TestGenerators(unittest.TestCase):
         return
 
     def test_gaussian(self):
-        return
         mu = self.mu
         sigma = self.sigma
         names = self.names
@@ -32,7 +31,6 @@ class TestGenerators(unittest.TestCase):
         self._checkcovariance(data, cov=np.diag(np.power(sigma,2)), gen=gen)
 
     def test_gaussian_withfixed(self):
-        return
         mu = self.mu
         sigma = self.sigma
         names = self.names
@@ -52,7 +50,6 @@ class TestGenerators(unittest.TestCase):
         self._checkcovariance(data, cov=np.diag(np.power(fixedsigma,2)))
 
     def test_constant(self):
-        return
         mu = range(-5, 5)
         names = ["par_"+str(m) for m in mu]
         gen = ConstantGenerator(names, mu)
