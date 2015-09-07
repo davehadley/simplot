@@ -1,9 +1,11 @@
 import itertools
 
+from simplot.pdg import PdgNeutrinoOscillationParameters
 from simplot.cache import cache
 import simplot.sparsehist.sparsehist
 from simplot.sparsehist import SparseHistogram
 from simplot.binnedmodel.model import BinnedModel as _BinnedModel
+from simplot.binnedmodel.model import BinnedModelWithOscillation as _BinnedModelWithOscillation
 from simplot.binnedmodel.xsecweights import XsecWeights, InterpolatedWeightCalc
 
 import numpy as np
@@ -20,10 +22,7 @@ class Sample(object):
 
 class BinnedSample(Sample):
     def __init__(self, name, binning, observables, data, cache_name=None, systematics=None):
-        parameter_names = []
-        if systematics:
-            for s, _ in systematics:
-                parameter_names.append(s)
+        parameter_names = self._build_parameter_names(systematics)
         super(BinnedSample, self).__init__(parameter_names)
         self.name = name
         self.axisnames = [n for n, _ in binning]
@@ -31,24 +30,38 @@ class BinnedSample(Sample):
         def func():
             return self._loaddata(data, systematics)
         if cache_name:
-            hist, systhist = cache(cache_name, func)
+            data = cache(cache_name, func)
         else:
-            hist, systhist = func()
+            data = func()
+        self._model = self._buildmodel(systematics, data, observables)
+
+    def _build_parameter_names(self, systematics):
+        parameter_names = []
+        if systematics:
+            for s, _ in systematics:
+                parameter_names.append(s)
+        return parameter_names
+
+    def _buildmodel(self, systematics, data, observables):
+        hist, systhist = data
         observabledim = [self.axisnames.index(p) for p in observables]
         xsec_weights = self._buildxsecweights(systematics, systhist, hist)
-        self._model = _BinnedModel(parameter_names, hist, observabledim, xsec_weights=xsec_weights)
+        return _BinnedModel(self.parameter_names, hist, observabledim, xsec_weights=xsec_weights)
 
     def __call__(self, x):
         return self._model.observable(x).flatten()
 
     def _loaddata(self, data, systematics):
         hist = SparseHistogram(self.binedges)
-        systhist = [[SparseHistogram(self.binedges) for val in values] for syst, values in systematics]
+        if systematics:
+            systhist = [[SparseHistogram(self.binedges) for val in values] for syst, values in systematics]
+        else:
+            systhist = []
         for coord, selweight, systweight in data:
             hist.fill(coord, selweight)
             for isyst in xrange(len(systhist)):
                 for ival in xrange(len(systhist[isyst])):
-                    systhist[isyst][ival].fill(coord, systweight[isyst, ival])
+                    systhist[isyst][ival].fill(coord, selweight * systweight[isyst, ival])
         return hist, systhist
 
     def _buildxsecweights(self, systematicsvalues, systhist, hist):
@@ -69,20 +82,81 @@ class BinnedSample(Sample):
 ################################################################################
 
 class BinnedSampleWithOscillation(BinnedSample):
-    def __init__(self, name, binning, data, distance, cache_name=None):
+    def __init__(self, name, binning, observables, data, enuaxis, flavaxis, distance, cache_name=None, systematics=None):
+        self._enu_axis_name = enuaxis
+        self._flav_axis_name = flavaxis
         self._distance = distance
-        super(BinnedSampleWithOscillation, self, name, binning, data, cache_name)
+        super(BinnedSampleWithOscillation, self).__init__(name=name, 
+                                                          binning=binning, 
+                                                          observables=observables,
+                                                          data=data, 
+                                                          cache_name=cache_name,
+                                                          systematics=systematics,
+        )
+
+    def _build_parameter_names(self, systematics):
+        parameter_names = list(PdgNeutrinoOscillationParameters.ALL_PARS_SINSQ2)
+        if systematics:
+            for s, _ in systematics:
+                parameter_names.append(s)
+        return parameter_names
+
+    def _buildmodel(self, systematics, data, observables):
+        selhist, noselhist, selsysthist, noselsysthist = data
+        observabledim = [self.axisnames.index(p) for p in observables]
+        enudim = self.axisnames.index(self._enu_axis_name)
+        flavdim = self.axisnames.index(self._flav_axis_name)
+        xsec_weights = self._buildxsecweights(systematics, selsysthist, selhist)
+        return _BinnedModelWithOscillation(self.parameter_names, selhist, noselhist, observabledim, enudim, flavdim, None, [self._distance], xsec_weights=xsec_weights)
+
+    def _loaddata(self, data, systematics):
+        selhist = SparseHistogram(self.binedges)
+        noselhist = SparseHistogram(self.binedges)
+        if systematics:
+            selsysthist = [[SparseHistogram(self.binedges) for val in values] for syst, values in systematics]
+            noselsysthist = [[SparseHistogram(self.binedges) for val in values] for syst, values in systematics]
+        else:
+            selsysthist = []
+            noselsysthist = []
+        for coord, selweight, noselweight, systweight in data:
+            if selweight != 0:
+                selhist.fill(coord, selweight)
+            noselhist.fill(coord, noselweight)
+            for isyst in xrange(len(selsysthist)):
+                for ival in xrange(len(selsysthist[isyst])):
+                    if selweight != 0:
+                        selsysthist[isyst][ival].fill(coord, selweight * systweight[isyst, ival])
+                    noselsysthist[isyst][ival].fill(coord, noselweight * systweight[isyst, ival])
+        return selhist, noselhist, selsysthist, noselsysthist
 
 ################################################################################
 
 class CombinedBinnedSample(Sample):
     def __init__(self, samples):
         self._samples = samples
-        parameter_names = samples[0].parameter_names
+        parameter_names, mapping = self._determine_parameter_mapping(samples)
+        self._par_map = mapping
         super(CombinedBinnedSample, self).__init__(parameter_names)
 
     def __call__(self, x):
-        return np.concatenate([s(x) for s in self._samples])
+        return np.concatenate([s(self._get_args(x, i)) for i, s in enumerate(self._samples)])
+
+    def _get_args(self, x, samplenum):
+        x2 = np.fromiter(itertools.imap(x.__getitem__, self._par_map[samplenum]), x.dtype)
+        return x2
+
+    def _determine_parameter_mapping(self, samples, parameter_names=None):
+        if parameter_names is None:
+            parameter_names = []
+            for s in samples:
+                for p in s.parameter_names:
+                    if p not in parameter_names:
+                        parameter_names.append(p)
+        mapping = []
+        for s in samples:
+            m = np.array([parameter_names.index(p) for p in s.parameter_names], dtype=int)
+            mapping.append(m)
+        return parameter_names, mapping
 
 ################################################################################
 

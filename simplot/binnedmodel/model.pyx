@@ -19,6 +19,8 @@ from libc.stdint cimport uint64_t
 
 ctypedef std_map[uint64_t, double].iterator SparseArrayIterator
 
+DEF NO_DET_DIM = 9999
+
 ################################################################################
 
 cdef class BinnedModel:
@@ -78,6 +80,8 @@ cdef class BinnedModelWithOscillation:
         self._obs = obs
         self._flav_dimension = flavdim
         self._enu_dimension = enudim
+        if detdim is None:
+            detdim = NO_DET_DIM
         self._det_dimension = detdim
         self._otherflav = [1,0,3,2]
         enubinning = N_sel.binning()[enudim]
@@ -125,7 +129,10 @@ cdef class BinnedModelWithOscillation:
         #for index, value in arr:
             #determine oscillation probability
             enu = index[ienu]
-            det = index[idet]
+            if idet == NO_DET_DIM:
+                det = 0
+            else:
+                det = index[idet]
             flav_j = index[iflav]
             flav_i = otherflav[flav_j]
             #pdis = posc[enu][det][flav_j][flav_j]
