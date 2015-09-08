@@ -1,7 +1,7 @@
 import math
 
-from simplot.mc.generators import GaussianGenerator, UniformGenerator, GeneratorList
-from simplot.mc.likelihood import GaussianLikelihood, CombinedLikelihood, ConstantLikelihood
+from simplot.mc.generators import GaussianGenerator, MultiVariateGaussianGenerator, UniformGenerator, GeneratorList
+from simplot.mc.likelihood import GaussianLikelihood, MultiVariateGaussianLikelihood, CombinedLikelihood, ConstantLikelihood
 from simplot.pdg import PdgNeutrinoOscillationParameters
 
 class Prior(object):
@@ -15,6 +15,12 @@ class GaussianPrior(Prior):
         lhd = GaussianLikelihood(parameter_names, mu, sigma)
         super(GaussianPrior, self).__init__(gen, lhd)
 
+class MultiVariateGaussianPrior(Prior):
+    def __init__(self, parameter_names, mu, cov, seed=None):
+        gen = MultiVariateGaussianGenerator(parameter_names, mu, cov, seed=seed)
+        lhd = MultiVariateGaussianLikelihood(parameter_names, mu, cov)
+        super(MultiVariateGaussianPrior, self).__init__(gen, lhd)
+
 class UniformPrior(Prior):
     def __init__(self, parameter_names, value, range_, seed=None):
         gen = UniformGenerator(parameter_names, value, range_, seed=seed)
@@ -23,7 +29,6 @@ class UniformPrior(Prior):
 
 class CombinedPrior(Prior):
     def __init__(self, priors):
-
         gen = [p.generator for p in priors]
         gen = GeneratorList(*gen)
         lhd = CombinedLikelihood([p.likelihood for p in priors])
