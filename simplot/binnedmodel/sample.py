@@ -61,7 +61,7 @@ class BinnedSample(Sample):
             hist.fill(coord, selweight)
             for isyst in xrange(len(systhist)):
                 for ival in xrange(len(systhist[isyst])):
-                    systhist[isyst][ival].fill(coord, selweight * systweight[isyst, ival])
+                    systhist[isyst][ival].fill(coord, selweight * systweight[isyst][ival])
         return hist, systhist
 
     def _buildxsecweights(self, systematicsvalues, systhist, hist):
@@ -125,8 +125,8 @@ class BinnedSampleWithOscillation(BinnedSample):
             for isyst in xrange(len(selsysthist)):
                 for ival in xrange(len(selsysthist[isyst])):
                     if selweight != 0:
-                        selsysthist[isyst][ival].fill(coord, selweight * systweight[isyst, ival])
-                    noselsysthist[isyst][ival].fill(coord, noselweight * systweight[isyst, ival])
+                        selsysthist[isyst][ival].fill(coord, selweight * systweight[isyst][ival])
+                    noselsysthist[isyst][ival].fill(coord, noselweight * systweight[isyst][ival])
         return selhist, noselhist, selsysthist, noselsysthist
 
 ################################################################################
