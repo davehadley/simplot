@@ -8,7 +8,16 @@ class MonteCarloException(Exception):
     pass
 
 class MonteCarloParameterMismatch(MonteCarloException):
-    pass
+    @classmethod
+    def compare_parameters_message(cls, lhs, rhs):
+        if lhs == rhs:
+            return "OK"
+        elif set(lhs) == set(rhs):
+            return "Wrong order:" + ",\n".join("%s: %s != %s)"%(i, l, r) for i,(l,r) in enumerate(zip(lhs,rhs)) if not l==r)
+        else:
+            slhs = set(lhs)
+            srhs = set(rhs)
+            return "Different parameter names: in left=" + str(slhs - srhs) + "\n in right=" + str(srhs - slhs) 
 
 ################################################################################
 
@@ -31,7 +40,7 @@ class ToyMC:
     def _verify(self, ratevector, generator):
         #check that the inputs match
         if not ratevector.parameter_names == generator.parameter_names:
-            raise MonteCarloParameterMismatch("ToyMC given ratevector and generator with mis-matched names.")
+            raise MonteCarloParameterMismatch("ToyMC given ratevector and generator with mis-matched names.", MonteCarloParameterMismatch.compare_parameters_message(ratevector.parameter_names, generator.parameter_names))
         return
     
     def __call__(self):
