@@ -12,13 +12,16 @@ cdef class FluxWeights:
     cdef SparseArray _arr
     cdef vector[uint64_t] _parindex
     cdef vector[uint64_t] _keys
+    cdef list parameter_names
 
     def __cinit__(self, parnames, shape, enudim, flavdim, detdim, beammodedim, parametermap=None, flavbinmap=_DEFAULT_FLAV_BINMAP):
+        parameter_names = list(parnames)
         #setup array
         fluxshape = [0 for s in shape]
         fluxshape[enudim] = shape[enudim]
         fluxshape[flavdim] = shape[flavdim]
-        fluxshape[detdim] = shape[detdim]
+        if detdim >= 0:
+            fluxshape[detdim] = shape[detdim]
         fluxshape[beammodedim] = shape[beammodedim]
         self._arr = SparseArray(fluxshape)
         # map indices to parameters
@@ -40,14 +43,18 @@ cdef class FluxWeights:
                 detbin, beambin, flav, enubin = match.groups()
                 index = list(fluxshape)
                 index[enudim] = int(enubin)
-                index[detdim] = int(detbin)
+                if detdim >= 0:
+                    index[detdim] = int(detbin)
                 index[flavdim] = int(flavbinmap[flav])
                 index[beammodedim] = int(beambin)
                 key = self._arr.key(index)
                 keys.append(key)
                 parindex.append(parindex)
         #check all parameters have been found
-        expected = shape[enudim] * shape[flavdim] * shape[detdim] * shape[beammodedim]
+        if detdim >= 0:
+            expected = shape[enudim] * shape[flavdim] * shape[detdim] * shape[beammodedim]
+        else:
+            expected = shape[enudim] * shape[flavdim] * shape[beammodedim]
         #expected = 1
         #for s in shape:
         #    if not s == 0:
@@ -67,7 +74,8 @@ cdef class FluxWeights:
             for detbin, beambin, flav, enubin in range_:
                 index = list(fluxshape)
                 index[enudim] = int(enubin)
-                index[detdim] = int(detbin)
+                if detdim >= 0:
+                    index[detdim] = int(detbin)
                 index[flavdim] = int(flavbinmap[flav])
                 index[beammodedim] = int(beambin)
                 key = self._arr.key(index)
@@ -75,7 +83,10 @@ cdef class FluxWeights:
                 parindex.append(pindex)
                 found.add(tuple(index))
         #check all parameters have been found
-        expected = shape[enudim] * shape[flavdim] * shape[detdim] * shape[beammodedim]
+        if detdim >= 0:
+            expected = shape[enudim] * shape[flavdim] * shape[detdim] * shape[beammodedim]
+        else:
+            expected = shape[enudim] * shape[flavdim] * shape[beammodedim]
         if not len(found) == expected:
             raise Exception("Wrong number of flux parameters found.", len(found), expected)
         return keys, parindex

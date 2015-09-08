@@ -21,8 +21,8 @@ class Sample(object):
 ################################################################################
 
 class BinnedSample(Sample):
-    def __init__(self, name, binning, observables, data, cache_name=None, systematics=None):
-        parameter_names = self._build_parameter_names(systematics)
+    def __init__(self, name, binning, observables, data, cache_name=None, systematics=None, fluxsystematics=None):
+        parameter_names = self._build_parameter_names(systematics, fluxsystematics)
         super(BinnedSample, self).__init__(parameter_names)
         self.name = name
         self.axisnames = [n for n, _ in binning]
@@ -33,20 +33,24 @@ class BinnedSample(Sample):
             data = cache(cache_name, func)
         else:
             data = func()
-        self._model = self._buildmodel(systematics, data, observables)
+        self._model = self._buildmodel(systematics, data, observables, fluxsystematics)
 
-    def _build_parameter_names(self, systematics):
+    def _build_parameter_names(self, systematics, fluxsystematics):
         parameter_names = []
         if systematics:
             for s, _ in systematics:
                 parameter_names.append(s)
+        if fluxsystematics:
+            for s in fluxsystematics.parameter_names:
+                parameter_names.append(s)
         return parameter_names
 
-    def _buildmodel(self, systematics, data, observables):
+    def _buildmodel(self, systematics, data, observables, fluxsystematics):
         hist, systhist = data
         observabledim = [self.axisnames.index(p) for p in observables]
         xsec_weights = self._buildxsecweights(systematics, systhist, hist)
-        return _BinnedModel(self.parameter_names, hist, observabledim, xsec_weights=xsec_weights)
+        flux_weights = self._buildfluxweights(fluxsystematics)
+        return _BinnedModel(self.parameter_names, hist, observabledim, xsec_weights=xsec_weights, flux_weights=flux_weights)
 
     def __call__(self, x):
         return self._model.observable(x).flatten()
@@ -79,10 +83,18 @@ class BinnedSample(Sample):
             xsecweights = XsecWeights(hist.array(), wclist)
         return xsecweights
 
+    def _buildfluxweights(self, fluxsystematics):
+        fw = None
+        if fluxsystematics:
+            #we don't know how to build the flux systematics,
+            # user must provide a callable that constructs the object
+            fw = fluxsystematics(self.parameter_names)
+        return fw
+
 ################################################################################
 
 class BinnedSampleWithOscillation(BinnedSample):
-    def __init__(self, name, binning, observables, data, enuaxis, flavaxis, distance, cache_name=None, systematics=None):
+    def __init__(self, name, binning, observables, data, enuaxis, flavaxis, distance, cache_name=None, systematics=None, fluxsystematics=None):
         self._enu_axis_name = enuaxis
         self._flav_axis_name = flavaxis
         self._distance = distance
@@ -92,22 +104,27 @@ class BinnedSampleWithOscillation(BinnedSample):
                                                           data=data, 
                                                           cache_name=cache_name,
                                                           systematics=systematics,
+                                                          fluxsystematics=fluxsystematics,
         )
 
-    def _build_parameter_names(self, systematics):
+    def _build_parameter_names(self, systematics, fluxsystematics):
         parameter_names = list(PdgNeutrinoOscillationParameters.ALL_PARS_SINSQ2)
         if systematics:
             for s, _ in systematics:
                 parameter_names.append(s)
+        if fluxsystematics:
+            for s in fluxsystematics.parameter_names:
+                parameter_names.append(s)
         return parameter_names
 
-    def _buildmodel(self, systematics, data, observables):
+    def _buildmodel(self, systematics, data, observables, fluxsystematics):
         selhist, noselhist, selsysthist, noselsysthist = data
         observabledim = [self.axisnames.index(p) for p in observables]
         enudim = self.axisnames.index(self._enu_axis_name)
         flavdim = self.axisnames.index(self._flav_axis_name)
         xsec_weights = self._buildxsecweights(systematics, selsysthist, selhist)
-        return _BinnedModelWithOscillation(self.parameter_names, selhist, noselhist, observabledim, enudim, flavdim, None, [self._distance], xsec_weights=xsec_weights)
+        flux_weights = self._buildfluxweights(fluxsystematics)
+        return _BinnedModelWithOscillation(self.parameter_names, selhist, noselhist, observabledim, enudim, flavdim, None, [self._distance], xsec_weights=xsec_weights, flux_weights=flux_weights)
 
     def _loaddata(self, data, systematics):
         selhist = SparseHistogram(self.binedges)
