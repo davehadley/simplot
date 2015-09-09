@@ -71,7 +71,7 @@ cdef class BinnedModelWithOscillation:
     cdef _xsec_weights;
     cdef list _parnames;
 
-    def __init__(self, parnames, N_sel, N_nosel, obs, enudim, flavdim, detdim, detdist, flux_weights=None, xsec_weights=None):
+    def __init__(self, parnames, N_sel, N_nosel, obs, enudim, flavdim, detdim, detdist, flux_weights=None, xsec_weights=None, probabilitycalc=None):
         self._parnames = parnames
         self._shape = N_sel.array().shape()
         self._eff = N_sel.array() / N_nosel.array()
@@ -85,7 +85,7 @@ cdef class BinnedModelWithOscillation:
         self._det_dimension = detdim
         self._otherflav = [1,0,3,2]
         enubinning = N_sel.binning()[enudim]
-        self._prob = ProbabilityCache(parnames, enubinning, detdist)
+        self._prob = ProbabilityCache(parnames, enubinning, detdist, probabilitycalc=probabilitycalc)
         if flux_weights is None:
             flux_weights = lambda x: _identity(self._shape)
         self._flux_weights = flux_weights
@@ -239,6 +239,8 @@ cdef class ProbabilityCache:
     cdef uint64_t _sdm;
     cdef uint64_t _ldm;
     def __init__(self, parnames, enubinning, detdist, probabilitycalc=None):
+        if probabilitycalc is None and any([d>0 for d in detdist]):
+            raise Exception("invalid probability calculator", probabilitycalc, detdist)
         self._parse_parameter_names(parnames)
         self._prob = probabilitycalc #crootglobes.Probability()
         enubinning = np.array(enubinning)

@@ -94,10 +94,11 @@ class BinnedSample(Sample):
 ################################################################################
 
 class BinnedSampleWithOscillation(BinnedSample):
-    def __init__(self, name, binning, observables, data, enuaxis, flavaxis, distance, cache_name=None, systematics=None, fluxsystematics=None):
+    def __init__(self, name, binning, observables, data, enuaxis, flavaxis, distance, cache_name=None, systematics=None, fluxsystematics=None, probabilitycalc=None):
         self._enu_axis_name = enuaxis
         self._flav_axis_name = flavaxis
         self._distance = distance
+        self._probabilitycalc = probabilitycalc
         super(BinnedSampleWithOscillation, self).__init__(name=name, 
                                                           binning=binning, 
                                                           observables=observables,
@@ -124,7 +125,8 @@ class BinnedSampleWithOscillation(BinnedSample):
         flavdim = self.axisnames.index(self._flav_axis_name)
         xsec_weights = self._buildxsecweights(systematics, selsysthist, selhist)
         flux_weights = self._buildfluxweights(fluxsystematics)
-        return _BinnedModelWithOscillation(self.parameter_names, selhist, noselhist, observabledim, enudim, flavdim, None, [self._distance], xsec_weights=xsec_weights, flux_weights=flux_weights)
+        probabilitycalc = self._probabilitycalc
+        return _BinnedModelWithOscillation(self.parameter_names, selhist, noselhist, observabledim, enudim, flavdim, None, [self._distance], xsec_weights=xsec_weights, flux_weights=flux_weights, probabilitycalc=probabilitycalc)
 
     def _loaddata(self, data, systematics):
         selhist = SparseHistogram(self.binedges)
