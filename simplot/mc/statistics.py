@@ -42,8 +42,11 @@ def _set_naninf(arr, val=0.0):
 
 def safedivide(lhs, rhs):
     '''Divide by zero is set to 0.0.'''
-    div = np.divide(lhs, rhs)
-    return _set_naninf(div, 0.0)
+    l = np.array(lhs)
+    r = np.array(rhs)
+    l[r==0] = 0.0
+    r[r==0] = 1.0
+    return l / r
 
 ###############################################################################
 
