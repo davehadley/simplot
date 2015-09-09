@@ -41,6 +41,7 @@ class Generator(object):
 
     def setfixed(self, fixed):
         '''Fixed is either a list of parameter names, or a dictionary mapping parameter names to their fixed values.'''
+        self._fixed = {} # reset fixed parameters
         if fixed is None:
             fixed = {}
         try:
