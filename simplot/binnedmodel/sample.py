@@ -53,6 +53,8 @@ class BinnedSample(Sample):
         return _BinnedModel(self.parameter_names, hist, observabledim, xsec_weights=xsec_weights, flux_weights=flux_weights)
 
     def __call__(self, x):
+        if len(x) != len(self.parameter_names):
+            raise ValueError("Sample called with wrong number of parameters")
         return self._model.observable(x).flatten()
 
     def _loaddata(self, data, systematics):
@@ -157,7 +159,13 @@ class CombinedBinnedSample(Sample):
         self._par_map = mapping
         super(CombinedBinnedSample, self).__init__(parameter_names)
 
+    def eval_subsample(self, pars, samplenum):
+        return self._samples[samplenum](self._get_args(pars, samplenum))
+
+
     def __call__(self, x):
+        if len(x) != len(self.parameter_names):
+            raise ValueError("Sample called with wrong number of parameters")
         return np.concatenate([s(self._get_args(x, i)) for i, s in enumerate(self._samples)])
 
     def _get_args(self, x, samplenum):
