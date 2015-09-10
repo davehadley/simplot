@@ -6,3 +6,9 @@
 
 build/
 
+#directories created by unit tests
+plots/
+
+#directories created by coverage tests
+.coverage
+htmlcov/

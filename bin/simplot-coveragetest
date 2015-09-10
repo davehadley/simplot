@@ -1,0 +1,4 @@
+#!/bin/env bash
+coverage run  --source="simplot" -m unittest discover simplot.test
+coverage report
+#coverage html
