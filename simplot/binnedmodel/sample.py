@@ -128,6 +128,11 @@ class BinnedSampleWithOscillation(BinnedSample):
         xsec_weights = self._buildxsecweights(systematics, selsysthist, selhist)
         flux_weights = self._buildfluxweights(fluxsystematics)
         probabilitycalc = self._probabilitycalc
+        if probabilitycalc is None:
+            #no user supplied probability calculator, use prob3++
+            import simplot.rootprob3pp.lib
+            import ROOT
+            probabilitycalc = ROOT.crootprob3pp.Probability()
         return _BinnedModelWithOscillation(self.parameter_names, selhist, noselhist, observabledim, enudim, flavdim, None, [self._distance], xsec_weights=xsec_weights, flux_weights=flux_weights, probabilitycalc=probabilitycalc)
 
     def _loaddata(self, data, systematics):

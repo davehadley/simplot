@@ -1,6 +1,11 @@
 
-all:
+all: simplot prob3pp
+
+simplot:
 	python setup.py build_ext --inplace
+
+prob3pp:
+	cd simplot/rootprob3pp/Prob3++.20121225 && make all
 
 clean:
 	-rm simplot/rootplot/cmerge.cpp
