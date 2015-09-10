@@ -10,14 +10,14 @@ class MonteCarloException(Exception):
 class MonteCarloParameterMismatch(MonteCarloException):
     @classmethod
     def compare_parameters_message(cls, lhs, rhs):
-        if lhs == rhs:
-            return "OK"
-        elif set(lhs) == set(rhs):
-            return "Wrong order:" + ",\n".join("%s: %s != %s)"%(i, l, r) for i,(l,r) in enumerate(zip(lhs,rhs)) if not l==r)
+        result = ""
+        if set(lhs) == set(rhs) and not (lhs == rhs):
+            result = "Wrong order:" + ",\n".join("%s: %s != %s)"%(i, l, r) for i,(l,r) in enumerate(zip(lhs,rhs)) if not l==r)
         else:
             slhs = set(lhs)
             srhs = set(rhs)
-            return "Different parameter names: in left=" + str(slhs - srhs) + "\n in right=" + str(srhs - slhs) 
+            result = "Different parameter names: in left=" + str(slhs - srhs) + "\n in right=" + str(srhs - slhs) 
+        return result
 
 ################################################################################
 
