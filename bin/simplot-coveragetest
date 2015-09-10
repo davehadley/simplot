@@ -1,4 +1,6 @@
-#!/bin/env bash
+#!/usr/bin/env bash
 coverage run  --source="simplot" -m unittest discover simplot.test
 coverage report
-#coverage html
+coverage html
+echo "Report at:"
+echo $(pwd)/htmlcov/index.html
