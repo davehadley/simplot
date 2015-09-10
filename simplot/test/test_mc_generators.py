@@ -24,7 +24,7 @@ class TestGenerators(unittest.TestCase):
         names = self.names
         gen = GaussianGenerator(names, mu, sigma, seed=19021)
         npe = 10**4
-        precision = 3.0*1.0/math.sqrt(npe)
+        precision = 5.0*1.0/math.sqrt(npe)
         data = np.array([gen() for _ in xrange(npe)])
         self._checkmean(data, gen=gen)
         self._checkstddev(data, gen=gen)
@@ -43,7 +43,7 @@ class TestGenerators(unittest.TestCase):
             fixedsigma[names.index(n)] = 0.0
         gen.setfixed(fixed)
         npe = 10**4
-        precision = 3.0*1.0/math.sqrt(npe)
+        precision = 5.0*1.0/math.sqrt(npe)
         data = np.array([gen() for _ in xrange(npe)])
         self._checkmean(data, mu=fixedmu, sigma=fixedsigma, gen=gen)
         self._checkstddev(data, sigma=fixedsigma)
@@ -124,7 +124,7 @@ class TestGenerators(unittest.TestCase):
         if sigma is None:
             sigma = self.sigma
         if precision is None:
-            precision = 3.0*1.0/math.sqrt(len(data))
+            precision = 5.0*1.0/math.sqrt(len(data))
         #check mean
         for ii, m in enumerate(mu):
             dm = np.mean(data[:, ii])
@@ -138,7 +138,7 @@ class TestGenerators(unittest.TestCase):
         if sigma is None:
             sigma = self.sigma
         if precision is None:
-            precision = 3.0*1.0/math.sqrt(len(data))
+            precision = 5.0*1.0/math.sqrt(len(data))
         #check standard deviation
         for ii, s in enumerate(sigma):
             ds = np.std(data[:, ii])
@@ -152,7 +152,7 @@ class TestGenerators(unittest.TestCase):
         if cov is None:
             cov = self.cov
         if precision is None:
-            precision = 3.0*1.0/math.sqrt(len(data))
+            precision = 5.0*1.0/math.sqrt(len(data))
         datacov = np.cov(data, rowvar=0)
         self.assertEquals(cov.shape, datacov.shape)
         for ii, jj in itertools.product(xrange(datacov.shape[0]), repeat=2):
