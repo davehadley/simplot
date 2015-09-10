@@ -22,7 +22,7 @@ def calculate_statistics(generator, statistics, npe, transform=None, name=None):
         statistics = [statistics]
     iterable = xrange(npe)
     if name is not None:
-        iterable = progress.printprogress(name, npe, iterable, update=True)
+        iterable = printprogress(name, npe, iterable, update=True)
     for _ in iterable:
         exp = generator()
         if transform:
@@ -33,10 +33,10 @@ def calculate_statistics(generator, statistics, npe, transform=None, name=None):
 
 ###############################################################################
 
-def _set_naninf(arr, val=0.0):
-    #remove NaN and inf values
-    arr[~np.isfinite(arr)] = val
-    return arr
+#def _set_naninf(arr, val=0.0):
+#    #remove NaN and inf values
+#    arr[~np.isfinite(arr)] = val
+#    return arr
 
 ###############################################################################
 
@@ -178,12 +178,16 @@ class RootHistogram(object):
         title = "_".join([self._title, str(i)])
         nbins = self._nbins
         if self._range is not None:
-            xmin, xmax = self._range
+            try:
+                xmin, xmax = self._range[i]
+            except TypeError:
+                xmin, xmax = self._range
             hist = ROOT.TH1F(name, title, nbins, xmin, xmax)
         else:
             hist = ROOT.TH1F(name, title, nbins, 0.0, 0.0)
         if self._allowrebin:
             hist.SetBit(ROOT.TH1.kCanRebin)
+        hist.SetDirectory(0)
         hist.Sumw2()
         return hist
 
