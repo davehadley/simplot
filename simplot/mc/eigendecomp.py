@@ -15,7 +15,7 @@ class EigenDecomposition:
         self._verify_decomposition()
 
     def transform_from_eigen_basis(self, x):
-        r = x.reshape((len(x), 1))
+        r = x.copy().reshape((len(x), 1))
         r = np.dot(self._q, r)
         r = r.ravel() # convert to flat array
         return r
@@ -24,8 +24,8 @@ class EigenDecomposition:
         return np.dot(self._q, np.dot(L, self._invq))
 
     def transform_to_eigen_basis(self, x):
-        r = x.reshape((len(x), 1))
-        r = np.dot(self._invq, r.T)
+        r = x.copy().reshape((len(x), 1))
+        r = np.dot(self._invq, r)
         r = r.ravel() # convert to flat array
         return r
 
@@ -50,6 +50,6 @@ class EigenDecomposition:
             ap = Aprime[index]
             a = A[index]
             if abs(a-ap) > precision:
-                raise Exception("Error in eigen decomposition, cannot get back to input matrix")
+                raise ValueError("Error in eigen decomposition, cannot get back to input matrix, ")
         return 
 
