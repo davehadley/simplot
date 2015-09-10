@@ -4,19 +4,92 @@ import unittest
 
 import numpy as np
 
-from simplot.mc.generators import UniformGenerator, GaussianGenerator, MultiVariateGaussianGenerator, ConstantGenerator, GeneratorList
+from simplot.mc.generators import UniformGenerator, GaussianGenerator, MultiVariateGaussianGenerator, ConstantGenerator, GeneratorList, Generator
 
 class TestGenerators(unittest.TestCase):
 
     def setUp(self):
-        self.mu = range(-5, 5)
-        self.sigma = range(0, 10)
+        self.mu = np.arange(-5, 5, dtype=float)
+        self.sigma = np.arange(0, 10, dtype=float)
         self.names = ["par_"+str(m) for m in self.mu]
         self.cov = np.zeros(shape=(len(self.mu), len(self.mu)))
         for ii, jj in itertools.product(xrange(len(self.mu)), repeat=2):
             cor = 0.9
             self.cov[ii,jj] = cor**(abs(ii-jj)) * self.sigma[ii]*self.sigma[jj]
         return
+
+    def test_generatorexception(self):
+        g = Generator(["a","b"], [0.0, 0.0])
+        with self.assertRaises(NotImplementedError):
+            g() # not implemented method
+        with self.assertRaises(NotImplementedError):
+            g.getsigma("a") # not implemented method
+        with self.assertRaises(ValueError):
+            g.setfixed({"x":0.0}) # fix non-existant parameter
+        with self.assertRaises(ValueError):
+            Generator(["a","b"], [0.0, 0.0, 0.0]) # wrong num parameters
+        with self.assertRaises(ValueError):
+            GaussianGenerator(["a","b"], [0.0, 0.0], [1.0, 1.0, 1.0]) # wrong num parameters (gaus)
+        with self.assertRaises(ValueError):
+            MultiVariateGaussianGenerator(["a","b"], [0.0, 0.0], [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]) # wrong num parameters (gaus)
+        with self.assertRaises(ValueError):
+            Generator(["a","a"], [0.0, 0.0]) # duplicate par name
+
+    def test_generatorlistexception(self):
+        gen1 = GaussianGenerator(["a", "b"], [1.0, 1.0], [1.0, 1.0])
+        gen2 = GaussianGenerator(["c", "d"], [1.0, 1.0], [1.0, 1.0])
+        lgen = GeneratorList(gen1, gen2)
+        with self.assertRaises(ValueError):
+            lgen.getmu("x")
+        with self.assertRaises(ValueError):
+            lgen.getsigma("x")
+        with self.assertRaises(ValueError):
+           lgen.getcovariance("a", "x")
+        
+
+    def test_fixedexcept_parameters(self):
+        npe = 10**4
+        mu = self.mu
+        sigma = self.sigma
+        names = self.names
+        gen = GaussianGenerator(names, mu, sigma, seed=19021)
+        for low, high in [(3, 7), (0, 10), (1, 3)]:
+            fixedval = 0.5
+            fixed = {n:0.5 for n in names[low:high]}
+            gen.fixallexcept(fixed)
+            data = np.array([gen() for _ in xrange(npe)])
+            expectedmu = np.copy(mu)
+            expectedsigma = np.copy(sigma)
+            expectedsigma[:low] = 0.0
+            expectedsigma[high:] = 0.0
+            self._checkmean(data, mu=expectedmu)
+            self._checkstddev(data, sigma=expectedsigma)
+        return
+
+    def test_fixed_parameters(self):
+        npe = 10**4
+        mu = self.mu
+        sigma = self.sigma
+        names = self.names
+        gen = GaussianGenerator(names, mu, sigma, seed=19021)
+        for low, high in [(3, 7), (0, 10), (1, 3)]:
+            fixedval = 0.5
+            fixed = {n:0.5 for n in names[low:high]}
+            gen.setfixed(fixed)
+            data = np.array([gen() for _ in xrange(npe)])
+            expectedmu = np.copy(mu)
+            expectedmu[low:high] = fixedval
+            expectedsigma = np.copy(sigma)
+            expectedsigma[low:high] = 0.0
+            self._checkmean(data, mu=expectedmu)
+            self._checkstddev(data, sigma=expectedsigma)
+        #check switching if off we get original behaviour
+        gen.setfixed(None)
+        data = np.array([gen() for _ in xrange(npe)])
+        self._checkmean(data, mu=mu)
+        self._checkstddev(data, sigma=sigma)
+        return
+
 
     def test_gaussian(self):
         mu = self.mu

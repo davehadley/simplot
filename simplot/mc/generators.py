@@ -30,7 +30,7 @@ class Generator(object):
         return v
 
     def _generate(self):
-        raise NotImplemented("ERROR: child class must implement _generate method.")
+        raise NotImplementedError("ERROR: child class must implement _generate method.")
         
     def fixallexcept(self, varied):
         fixed = set(self.parameter_names)
@@ -53,7 +53,7 @@ class Generator(object):
             try:
                 index = self.parameter_names.index(k)
             except ValueError:
-                raise GeneratorException("ERROR: generator has no parameter with name", k)
+                raise ValueError("ERROR: generator has no parameter with name", k)
             if v is None:
                 v = self.start_values[index]
             self._fixed[index] = v
@@ -70,14 +70,14 @@ class Generator(object):
             return 0.0
 
     def getsigma(self, parname):
-        raise NotImplemented("ERROR: child class must implement getsigma method.")
+        raise NotImplementedError("ERROR: child class must implement getsigma method.")
 
     def _verify_generator(self):
         if not len(self.parameter_names) == len(self.start_values):
-            raise GeneratorException("ERROR: different number of parameter names and starting values given", len(self.parameter_names), len(self.start_values))
+            raise ValueError("ERROR: different number of parameter names and starting values given", len(self.parameter_names), len(self.start_values))
         if not len(self.parameter_names) == len(set(self.parameter_names)):
             duplicates = [(ii, p) for ii, p in enumerate(self.parameter_names) if self.parameter_names.count(p) > 1]
-            raise GeneratorException("ERROR: generator initialised with duplicate parameter names", duplicates)
+            raise ValueError("ERROR: generator initialised with duplicate parameter names", duplicates)
         return
 
 
@@ -108,7 +108,7 @@ class GaussianGenerator(Generator):
     def _verify(self):
         all_lists = [self.parameter_names, self._mu, self._sigma, self.start_values]
         if not all(len(v) == len(self._mu) for v in all_lists):
-            raise Exception("GaussianGenerator initialisation list arguments are not the same length",
+            raise ValueError("GaussianGenerator initialisation list arguments are not the same length",
                             all_lists,
                             )
 
@@ -235,7 +235,7 @@ class MultiVariateGaussianGenerator(Generator):
     def _verify(self):
         all_lists = [self.parameter_names, self._mu, self._cov]
         if not all(len(v) == len(self._mu) for v in all_lists):
-            raise Exception("MultiVariateGaussianGenerator initialisation list arguments are not the same length",
+            raise ValueError("MultiVariateGaussianGenerator initialisation list arguments are not the same length",
                             all_lists,
                             )
 
