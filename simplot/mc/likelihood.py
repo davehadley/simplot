@@ -21,7 +21,7 @@ class Likelihood(object):
             raise LikelihoodParametersMismatch("duplicate parameter names", duplicates)
 
     def __call__(self, x):
-        raise Exception("NotImplemented")
+        raise NotImplementedError("Sub-class must override this method.")
 
     def _checksize(self, x):
         if not len(x) == self._npars:
@@ -55,8 +55,10 @@ class GaussianLikelihood(Likelihood):
         self._verify()
 
     def _verify(self):
+        if not (len(self._mu.shape) == len(self._sigma.shape) == 1):
+            raise ValueError("GaussianLikelihood mu/sigma have the wrong shape", self._mu.shape == self._sigma.shape)
         if not len(self._mu) == len(self._sigma) == self._npars:
-            raise LikelihoodException("GaussianLikelihood given mu and sigma of different length", self._mu, self._sigma)
+            raise ValueError("GaussianLikelihood given mu and sigma of different length", self._mu, self._sigma)
 
     def __call__(self, x):
         self._checksize(x)
@@ -71,16 +73,19 @@ class MultiVariateGaussianLikelihood(Likelihood):
         super(MultiVariateGaussianLikelihood, self).__init__(parameter_names)
         self._mu = np.array(mu, dtype=float, copy=True)
         cov = np.array(cov, copy=True)
+        self._verify(cov) # check inputs before trying matrix inversion.
         self._invcov = np.linalg.inv(cov)
-        self._verify()
 
-    def _verify(self):
-        if not len(self._mu) == len(self._invcov) == self._npars:
-            raise LikelihoodException("MultiVariateGaussianLikelihood given mu and cov of different length", self._mu, self._sigma)
-        #check covariance is square
-        shape = self._invcov.shape
+
+    def _verify(self, cov):
+        if len(self._mu.shape) != 1:
+            raise ValueError("MultiVariateGaussianLikelihood given mu with the wrong shape", self._mu.shape == cov.shape)
+        if not len(self._mu) == len(cov) == self._npars:
+            raise ValueError("MultiVariateGaussianLikelihood given mu and cov of different length", len(self._mu), len(cov), self._npars)
+        #check covariance is square (not needed as np.linalg.inv should raise a LinAlgError)
+        shape = cov.shape
         if len(shape)!=2 or shape[0] != shape[1]:
-            raise LikelihoodException("MultiVariateGaussianLikelihood given cov with the wrong shape", shape)
+            raise ValueError("MultiVariateGaussianLikelihood given cov with the wrong shape", shape)
         
     def __call__(self, x):
         self._checksize(x)

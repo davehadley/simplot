@@ -4,9 +4,39 @@ import unittest
 
 import numpy as np
 
-from simplot.mc.likelihood import Minus2LnLikehood, ConstantLikelihood, MultiVariateGaussianLikelihood, GaussianLikelihood, SumLikelihood, CombinedLikelihood, EventRateLikelihood, LikelihoodParametersMismatch
+from simplot.mc.likelihood import Minus2LnLikehood, ConstantLikelihood, \
+    MultiVariateGaussianLikelihood, GaussianLikelihood, SumLikelihood, \
+    CombinedLikelihood, EventRateLikelihood, LikelihoodParametersMismatch, \
+    LikelihoodException, Likelihood
 
 class TestLikelihood(unittest.TestCase):
+
+    def test_likelihood_exception(self):
+        abstract = Likelihood(["a"])
+        with self.assertRaises(NotImplementedError):
+            abstract([0.0])
+        return
+
+    def test_gaussianlikelihood_exception(self):
+        gaus = GaussianLikelihood(["a", "b"], [0.0, 1.0], [1.0, 1.0])
+        with self.assertRaises(LikelihoodParametersMismatch):
+            gaus([0.0])
+        with self.assertRaises(ValueError):
+            GaussianLikelihood(["a", "b"], [0.0, 1.0], [1.0, 1.0, 1.])
+        with self.assertRaises(ValueError):
+            GaussianLikelihood(["a"], [0.0, 1.0], [1.0, 1.0])
+        with self.assertRaises(ValueError):
+            GaussianLikelihood(["a"], [[0.0, 1.0]], [1.0, 1.0])
+        return
+
+    def test_multivargauslikelihood_exception(self):
+        with self.assertRaises(ValueError):
+            MultiVariateGaussianLikelihood(["a", "b"], [1.0, 1.0, 1.0], np.diag([1.0, 2.0]))
+        with self.assertRaises(ValueError):
+            MultiVariateGaussianLikelihood(["a", "b"], [1.0, 1.0], [[1.0, 1.0, 1.0],[1.0, 1.0, 1.0]])
+        with self.assertRaises(ValueError):
+            MultiVariateGaussianLikelihood(["a", "b"], [[0.0, 1.0], [0.0, 1.0]], [[1.0, 0.0],[0.0,1.0]])
+        return
 
     def test_duplicate_parameters(self):
         parnames = ["par", "par"]
