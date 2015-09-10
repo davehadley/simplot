@@ -43,6 +43,7 @@ class TestEigenDecomposition(unittest.TestCase):
     def _compare_expected(self, m, decomp):
         self._compare_expected_values(m, decomp)
         self._compare_expected_transformation(m, decomp)
+        self._compare_expected_matrix_transformation(m, decomp)
         return
 
     def _compare_expected_values(self, m, decomp):
@@ -72,6 +73,15 @@ class TestEigenDecomposition(unittest.TestCase):
                 xexp = decomp.transform_from_eigen_basis(yexp)
                 self._comparray(y, yexp)
                 self._comparray(x, xexp)
+        return
+
+    def _compare_expected_matrix_transformation(self, m, decomp):
+        #expect that the diagonal of eigen-values when transformed should
+        # return the original input matrix.
+        expected = m.matrix
+        testm = np.diag(m.eigenvalues)
+        result = decomp.transform_matrix_from_eigen_basis(testm)
+        self._comparray(result, expected)
         return
 
     def _comparray(self, a1, a2):

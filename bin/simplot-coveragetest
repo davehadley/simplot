@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-coverage run  --source="simplot" -m unittest discover simplot.test
+coverage run  --source="simplot" --omit="simplot/test/*.py" -m unittest discover simplot.test
 coverage report
 coverage html
 echo "Report at:"
