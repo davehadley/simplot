@@ -11,15 +11,24 @@ from simplot.mc.montecarlo import ToyMC
 from simplot.mc.statistics import Mean, StandardDeviation, calculate_statistics_from_toymc
 from simplot.mc.likelihood import EventRateLikelihood, SumLikelihood
 from simplot.mc.priors import GaussianPrior, CombinedPrior, OscillationParametersPrior
-from simplot.binnedmodel.sample import BinnedSample, BinnedSampleWithOscillation, CombinedBinnedSample
+from simplot.binnedmodel.sample import Systematics, Sample, BinnedSample, BinnedSampleWithOscillation, CombinedBinnedSample
 
 class TestModel(unittest.TestCase):
 
-    def test_model_building(self):
-        #run twice to test caching
+    def test_sample_exception(self):
+        s = Sample(["a", "b"])
+        with self.assertRaises(NotImplementedError):
+            s([0.0, 0.0])
+
+    def test_simple_model_building(self):
+        #try without cache
+        self._buildsimplemodel(cachestr=None)
+        #try with cache
         cachestr = "".join(random.choice(string.ascii_uppercase + string.digits) for _ in range(25))
-        for _ in xrange(2):
-            self._buildmodelnoosc(cachestr=cachestr)
+        #run twice to test read and write
+        self._buildsimplemodel(cachestr=cachestr)
+        self._buildsimplemodel(cachestr=cachestr)
+        return
 
     def test_generate_mc(self):
         _, toymc, _ = self._buildmodelnoosc()
@@ -74,6 +83,19 @@ class TestModel(unittest.TestCase):
             self.assertAlmostEquals(s, sex, delta=3.0*e)
         return
 
+    def _buildsimplemodel(self, cachestr=None):
+        systematics = [("x", [-5.0, 0.0, 5.0]),
+                       ("y", [-5.0, 0.0, 5.0])]
+        systematics = Systematics(systematics)
+        def gen(N):
+            for _ in xrange(N):
+                coord = np.random.poisson(size=2)
+                yield coord, 1.0, [(-4.0, 1.0, 5.0), (-4.0, 1.0, 5.0)]
+        binning = [("a", np.arange(0.0, 5.0)), ("b", np.arange(0.0, 5.0))]
+        observables = ["a"]
+        model = BinnedSample("simplemodel", binning, observables, gen(10**4), systematics=systematics, cache_name=cachestr)
+        return model
+
     def _buildmodelnoosc(self, cachestr="testnoosc"):
         return self._buildmodel(withosc=False, cachestr=cachestr)
 
@@ -109,6 +131,7 @@ class TestModel(unittest.TestCase):
         iternd280 = gen(10**5)
         itersuperk = gensk(1000)
         systematics = [("signal", [-5.0, 0.0, 5.0]), ("bkgd", [-5.0, 0.0, 5.0])]
+        systematics = Systematics(systematics)
         observables = ["reco_energy"]
         nd280 = BinnedSample("nd280", binning, observables, iternd280, cache_name="nd280_" + cachestr, systematics=systematics)
         prior = GaussianPrior(["signal", "bkgd"], [0.0, 0.0], [0.1, 0.1])

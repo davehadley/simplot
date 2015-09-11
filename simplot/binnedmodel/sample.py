@@ -16,59 +16,27 @@ class Sample(object):
     def __init__(self, parameter_names):
         self.parameter_names = parameter_names
     def __call__(self, x):
-        raise NotImplemented("ERROR: child class should override __call__.")
+        raise NotImplementedError("ERROR: child class should override __call__.")
 
 ################################################################################
 
-class BinnedSample(Sample):
-    def __init__(self, name, binning, observables, data, cache_name=None, systematics=None, fluxsystematics=None):
-        parameter_names = self._build_parameter_names(systematics, fluxsystematics)
-        super(BinnedSample, self).__init__(parameter_names)
-        self.name = name
-        self.axisnames = [n for n, _ in binning]
-        self.binedges = [np.array(edges, copy=True) for _, edges in binning]
-        def func():
-            return self._loaddata(data, systematics)
-        if cache_name:
-            data = cache(cache_name, func)
-        else:
-            data = func()
-        self._model = self._buildmodel(systematics, data, observables, fluxsystematics)
+class Systematics:
 
-    def _build_parameter_names(self, systematics, fluxsystematics):
-        parameter_names = []
-        if systematics:
-            for s, _ in systematics:
-                parameter_names.append(s)
-        if fluxsystematics:
-            for s in fluxsystematics.parameter_names:
-                parameter_names.append(s)
-        return parameter_names
+    def __init__(self, spline_parameter_values):
+        self._spline_parameter_values = spline_parameter_values
 
-    def _buildmodel(self, systematics, data, observables, fluxsystematics):
-        hist, systhist = data
-        observabledim = [self.axisnames.index(p) for p in observables]
-        xsec_weights = self._buildxsecweights(systematics, systhist, hist)
-        flux_weights = self._buildfluxweights(fluxsystematics)
-        return _BinnedModel(self.parameter_names, hist, observabledim, xsec_weights=xsec_weights, flux_weights=flux_weights)
+    def __call__(self, systhist, nominalhist):
+        xsec_weights = self._buildxsecweights(self.spline_parameter_values, systhist, nominalhist)
+        flux_weights = self._buildfluxweights()
+        return xsec_weights, flux_weights
 
-    def __call__(self, x):
-        if len(x) != len(self.parameter_names):
-            raise ValueError("Sample called with wrong number of parameters")
-        return self._model.observable(x).flatten()
+    @property
+    def spline_parameter_values(self):
+        return self._spline_parameter_values
 
-    def _loaddata(self, data, systematics):
-        hist = SparseHistogram(self.binedges)
-        if systematics:
-            systhist = [[SparseHistogram(self.binedges) for val in values] for syst, values in systematics]
-        else:
-            systhist = []
-        for coord, selweight, systweight in data:
-            hist.fill(coord, selweight)
-            for isyst in xrange(len(systhist)):
-                for ival in xrange(len(systhist[isyst])):
-                    systhist[isyst][ival].fill(coord, selweight * systweight[isyst][ival])
-        return hist, systhist
+    @property
+    def parameter_names(self):
+        return self._build_parameter_names(self._spline_parameter_values, None)
 
     def _buildxsecweights(self, systematicsvalues, systhist, hist):
         xsecweights = None
@@ -85,18 +53,79 @@ class BinnedSample(Sample):
             xsecweights = XsecWeights(hist.array(), wclist)
         return xsecweights
 
-    def _buildfluxweights(self, fluxsystematics):
+    def _buildfluxweights(self):
         fw = None
-        if fluxsystematics:
+        #if fluxsystematics:
             #we don't know how to build the flux systematics,
             # user must provide a callable that constructs the object
-            fw = fluxsystematics(self.parameter_names)
+        #    fw = fluxsystematics(self.parameter_names)
         return fw
+
+    def _build_parameter_names(self, systematics, fluxsystematics):
+        parameter_names = []
+        if systematics:
+            for s, _ in systematics:
+                parameter_names.append(s)
+        if fluxsystematics:
+            for s in fluxsystematics.parameter_names:
+                parameter_names.append(s)
+        return parameter_names
+
+################################################################################
+
+class BinnedSample(Sample):
+    def __init__(self, name, binning, observables, data, cache_name=None, systematics=None):
+        parameter_names = self._build_parameter_names(systematics)
+        super(BinnedSample, self).__init__(parameter_names)
+        self.name = name
+        self.axisnames = [n for n, _ in binning]
+        self.binedges = [np.array(edges, copy=True) for _, edges in binning]
+        def func():
+            return self._loaddata(data, systematics)
+        if cache_name:
+            data = cache(cache_name, func)
+        else:
+            data = func()
+        self._model = self._buildmodel(systematics, data, observables)
+
+    def _build_parameter_names(self, systematics):
+        parameter_names = []
+        if systematics:
+            parameter_names += systematics.parameter_names
+        return parameter_names
+
+    def _buildmodel(self, systematics, data, observables):
+        hist, systhist = data
+        observabledim = [self.axisnames.index(p) for p in observables]
+        #xsec_weights = self._buildxsecweights(systematics, systhist, hist)
+        #flux_weights = self._buildfluxweights(fluxsystematics)
+        xsec_weights, flux_weights = None, None
+        if systematics:
+            xsec_weights, flux_weights = systematics(systhist, hist)
+        return _BinnedModel(self.parameter_names, hist, observabledim, xsec_weights=xsec_weights, flux_weights=flux_weights)
+
+    def __call__(self, x):
+        if len(x) != len(self.parameter_names):
+            raise ValueError("Sample called with wrong number of parameters")
+        return self._model.observable(x).flatten()
+
+    def _loaddata(self, data, systematics):
+        hist = SparseHistogram(self.binedges)
+        if systematics:
+            systhist = [[SparseHistogram(self.binedges) for val in values] for syst, values in systematics.spline_parameter_values]
+        else:
+            systhist = []
+        for coord, selweight, systweight in data:
+            hist.fill(coord, selweight)
+            for isyst in xrange(len(systhist)):
+                for ival in xrange(len(systhist[isyst])):
+                    systhist[isyst][ival].fill(coord, selweight * systweight[isyst][ival])
+        return hist, systhist
 
 ################################################################################
 
 class BinnedSampleWithOscillation(BinnedSample):
-    def __init__(self, name, binning, observables, data, enuaxis, flavaxis, distance, cache_name=None, systematics=None, fluxsystematics=None, probabilitycalc=None):
+    def __init__(self, name, binning, observables, data, enuaxis, flavaxis, distance, cache_name=None, systematics=None, probabilitycalc=None):
         self._enu_axis_name = enuaxis
         self._flav_axis_name = flavaxis
         self._distance = distance
@@ -107,26 +136,22 @@ class BinnedSampleWithOscillation(BinnedSample):
                                                           data=data, 
                                                           cache_name=cache_name,
                                                           systematics=systematics,
-                                                          fluxsystematics=fluxsystematics,
         )
 
-    def _build_parameter_names(self, systematics, fluxsystematics):
+    def _build_parameter_names(self, systematics):
         parameter_names = list(PdgNeutrinoOscillationParameters.ALL_PARS_SINSQ2)
         if systematics:
-            for s, _ in systematics:
-                parameter_names.append(s)
-        if fluxsystematics:
-            for s in fluxsystematics.parameter_names:
-                parameter_names.append(s)
+            parameter_names += systematics.parameter_names
         return parameter_names
 
-    def _buildmodel(self, systematics, data, observables, fluxsystematics):
+    def _buildmodel(self, systematics, data, observables):
         selhist, noselhist, selsysthist, noselsysthist = data
         observabledim = [self.axisnames.index(p) for p in observables]
         enudim = self.axisnames.index(self._enu_axis_name)
         flavdim = self.axisnames.index(self._flav_axis_name)
-        xsec_weights = self._buildxsecweights(systematics, selsysthist, selhist)
-        flux_weights = self._buildfluxweights(fluxsystematics)
+        xsec_weights, flux_weights = None, None
+        if systematics:
+            xsec_weights, flux_weights = systematics(selsysthist, selhist)
         probabilitycalc = self._probabilitycalc
         if probabilitycalc is None:
             #no user supplied probability calculator, use prob3++
@@ -139,8 +164,8 @@ class BinnedSampleWithOscillation(BinnedSample):
         selhist = SparseHistogram(self.binedges)
         noselhist = SparseHistogram(self.binedges)
         if systematics:
-            selsysthist = [[SparseHistogram(self.binedges) for val in values] for syst, values in systematics]
-            noselsysthist = [[SparseHistogram(self.binedges) for val in values] for syst, values in systematics]
+            selsysthist = [[SparseHistogram(self.binedges) for val in values] for syst, values in systematics.spline_parameter_values]
+            noselsysthist = [[SparseHistogram(self.binedges) for val in values] for syst, values in systematics.spline_parameter_values]
         else:
             selsysthist = []
             noselsysthist = []
