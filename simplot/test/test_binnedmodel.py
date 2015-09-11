@@ -11,7 +11,8 @@ from simplot.mc.montecarlo import ToyMC
 from simplot.mc.statistics import Mean, StandardDeviation, calculate_statistics_from_toymc
 from simplot.mc.likelihood import EventRateLikelihood, SumLikelihood
 from simplot.mc.priors import GaussianPrior, CombinedPrior, OscillationParametersPrior
-from simplot.binnedmodel.sample import Systematics, Sample, BinnedSample, BinnedSampleWithOscillation, CombinedBinnedSample
+from simplot.binnedmodel.sample import Sample, BinnedSample, BinnedSampleWithOscillation, CombinedBinnedSample
+from simplot.binnedmodel.systematics import SplineSystematics
 
 class TestModel(unittest.TestCase):
 
@@ -86,7 +87,7 @@ class TestModel(unittest.TestCase):
     def _buildsimplemodel(self, cachestr=None):
         systematics = [("x", [-5.0, 0.0, 5.0]),
                        ("y", [-5.0, 0.0, 5.0])]
-        systematics = Systematics(systematics)
+        systematics = SplineSystematics(systematics)
         def gen(N):
             for _ in xrange(N):
                 coord = np.random.poisson(size=2)
@@ -131,7 +132,7 @@ class TestModel(unittest.TestCase):
         iternd280 = gen(10**5)
         itersuperk = gensk(1000)
         systematics = [("signal", [-5.0, 0.0, 5.0]), ("bkgd", [-5.0, 0.0, 5.0])]
-        systematics = Systematics(systematics)
+        systematics = SplineSystematics(systematics)
         observables = ["reco_energy"]
         nd280 = BinnedSample("nd280", binning, observables, iternd280, cache_name="nd280_" + cachestr, systematics=systematics)
         prior = GaussianPrior(["signal", "bkgd"], [0.0, 0.0], [0.1, 0.1])
