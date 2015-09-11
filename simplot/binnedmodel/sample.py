@@ -17,7 +17,6 @@ class Sample(object):
     def __call__(self, x):
         raise NotImplementedError("ERROR: child class should override __call__.")
 
-
 ################################################################################
 
 class BinnedSample(Sample):

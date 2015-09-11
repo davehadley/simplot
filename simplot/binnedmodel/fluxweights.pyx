@@ -6,7 +6,8 @@ from libc.stdint cimport uint64_t
 
 import re
 
-_DEFAULT_FLAV_BINMAP = {"numu" : 0, "nue" : 1, "antinumu" : 2, "antinue" : 3}
+#_DEFAULT_FLAV_BINMAP = {"numu" : 0, "nue" : 1, "antinumu" : 2, "antinue" : 3}
+_DEFAULT_FLAV_BINMAP = {0 : 0, 1 : 1, 2 : 2, 3 : 3}
 
 cdef class FluxWeights:
     cdef SparseArray _arr

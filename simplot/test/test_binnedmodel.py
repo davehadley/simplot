@@ -12,7 +12,7 @@ from simplot.mc.statistics import Mean, StandardDeviation, calculate_statistics_
 from simplot.mc.likelihood import EventRateLikelihood, SumLikelihood
 from simplot.mc.priors import GaussianPrior, CombinedPrior, OscillationParametersPrior
 from simplot.binnedmodel.sample import Sample, BinnedSample, BinnedSampleWithOscillation, CombinedBinnedSample
-from simplot.binnedmodel.systematics import SplineSystematics
+from simplot.binnedmodel.systematics import SplineSystematics, FluxSystematics, FluxAndSplineSystematics
 
 class TestModel(unittest.TestCase):
 
@@ -108,6 +108,7 @@ class TestModel(unittest.TestCase):
         binning = [("reco_energy", np.linspace(0.0, 5.0, num=100.0)),
                        ("true_energy", np.linspace(0.0, 5.0, num=25.0)),
                         ("true_nupdg", [0.0, 1.0, 2.0, 3.0, 4.0]),
+                        ("beammode", [0.0, 1.0, 2.0]),
         ]
         signalsyst = np.array([[-4.0, 1.0, 6.0], [1.0, 1.0, 1.0]])
         bkgdsyst = np.array([[1.0, 1.0, 1.0], [-4.0, 1.0, 6.0]])
@@ -123,19 +124,26 @@ class TestModel(unittest.TestCase):
                     true = np.random.uniform(0.0, 5.0)
                     syst = bkgdsyst
                 reco = np.random.normal(true, 0.0001)
+                beammode = np.random.randint(2)
+                if beammode == 1:
+                    nupdg = {0:1, 1:0, 2:3, 3:2}[nupdg]
                 if reco > 0.0 and true > 0.0:
-                    yield (reco, true, nupdg), 1.0, syst
+                    yield (reco, true, nupdg, beammode), 1.0, syst
         def gensk(N):
             eff = 0.5
-            for (reco, true, nupdg), weight, syst in gen(N):
+            for (reco, true, nupdg, beammode), weight, syst in gen(N):
                    yield (reco, true, nupdg), eff*weight, weight, syst
         iternd280 = gen(10**5)
         itersuperk = gensk(1000)
         systematics = [("signal", [-5.0, 0.0, 5.0]), ("bkgd", [-5.0, 0.0, 5.0])]
-        systematics = SplineSystematics(systematics)
+        flux_error_binning = [((beamname, flavname), beambin, flavbin, [0.0, 5.0]) for beambin, beamname in enumerate(["RHC", "FHC"]) for flavbin, flavname in enumerate(["numu", "nue", "numubar", "nuebar"])]
+        fluxparametermap = FluxSystematics.make_flux_parameter_map(binning[1][1], flux_error_binning)
+        systematics = FluxAndSplineSystematics(systematics, enudim=1, nupdgdim=2, beammodedim=3, fluxparametermap=fluxparametermap)
         observables = ["reco_energy"]
         nd280 = BinnedSample("nd280", binning, observables, iternd280, cache_name="nd280_" + cachestr, systematics=systematics)
-        prior = GaussianPrior(["signal", "bkgd"], [0.0, 0.0], [0.1, 0.1])
+        xsecprior = GaussianPrior(["signal", "bkgd"], [0.0, 0.0], [0.1, 0.1])
+        fluxprior = GaussianPrior([("f_%s_%s_0" %(beamname, flavname)) for beambin, beamname in enumerate(["RHC", "FHC"]) for flavbin, flavname in enumerate(["numu", "nue", "numubar", "nuebar"])], [1.0]*8, [0.1]*8)
+        prior = CombinedPrior([xsecprior, fluxprior])
         if withosc:
             superk = BinnedSampleWithOscillation("superk", binning, observables, itersuperk, "true_energy", "true_nupdg", 295.0, cache_name="superk_" + cachestr)
             model = CombinedBinnedSample([nd280, superk])

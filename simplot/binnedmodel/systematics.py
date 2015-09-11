@@ -1,3 +1,5 @@
+from collections import OrderedDict
+
 from simplot.binnedmodel.xsecweights import XsecWeights, InterpolatedWeightCalc
 from simplot.binnedmodel.fluxweights import FluxWeights
 
@@ -67,9 +69,10 @@ class SplineSystematics(Systematics):
 ################################################################################
 
 class FluxSystematics(Systematics):
-    def __init__(self, enudim, nupdgdim, fluxparametermap):
+    def __init__(self, enudim, nupdgdim, beammodedim, fluxparametermap):
         self._dim_enutrue = enudim
         self._dim_nupdg = nupdgdim
+        self._dim_beammode = beammodedim
         self._fluxparametermap = fluxparametermap
 
     @property
@@ -78,29 +81,51 @@ class FluxSystematics(Systematics):
 
     def __call__(self, parameter_names, systhist, nominalhist):
         xsec_weights = None
-        flux_weights = self._buildfluxweights(nominalhist)
+        flux_weights = self._buildfluxweights(parameter_names, nominalhist)
         return xsec_weights, flux_weights
 
-    def _buildfluxweights(self, nominalhist):
+    def _buildfluxweights(self, parameter_names, nominalhist):
         fw = FluxWeights(parameter_names, nominalhist.array().shape(),
                      self._dim_enutrue, 
                      self._dim_nupdg,
                      -1, # no detector dimension
-                     binning.dim_beammode,
+                     self._dim_beammode,
                      parametermap=self._fluxparametermap,
         )
         return
 
+    @classmethod
+    def make_flux_parameter_map(cls, enubinning, flux_error_binning, name_pattern=None):
+        result = OrderedDict()
+        detbin = -1
+        for key, beambin, flavbin, binning in flux_error_binning:
+            for ipar, (low, high) in enumerate(zip(binning[:-1], binning[1:])):
+                index = tuple(list(key) + [ipar])
+                if name_pattern is None:
+                    name_pattern = "f_" + "_".join(["%s"] * len(index))
+                parname = name_pattern % index
+                l = []
+                for xi, xlo in enumerate(enubinning[:-1]):
+                    if low <= xlo < high:
+                        l.append((detbin, beambin, flavbin, xi))
+                result[parname] = l
+        return result
+
 ################################################################################
 
 class FluxAndSplineSystematics(Systematics):
-    def __init__(self, spline_parameter_values):
+    def __init__(self, spline_parameter_values, enudim, nupdgdim, beammodedim, fluxparametermap):
         self._splinesyst = SplineSystematics(spline_parameter_values)
-        self._fluxsyst = FluxSystematics()
+        self._fluxsyst = FluxSystematics(enudim, nupdgdim, beammodedim, fluxparametermap)
+
+    @property
+    def spline_parameter_values(self):
+        return self._splinesyst.spline_parameter_values
 
     def __call__(self, parameter_names, systhist, nominalhist):
         xsec_weights, _ = self._splinesyst(parameter_names, systhist, nominalhist)
         _, flux_weights = self._fluxsyst(parameter_names, systhist, nominalhist)
+        return xsec_weights, flux_weights
 
     @property
     def parameter_names(self):
