@@ -141,8 +141,8 @@ class TestModel(unittest.TestCase):
         systematics = FluxAndSplineSystematics(systematics, enudim=1, nupdgdim=2, beammodedim=3, fluxparametermap=fluxparametermap)
         observables = ["reco_energy"]
         nd280 = BinnedSample("nd280", binning, observables, iternd280, cache_name="nd280_" + cachestr, systematics=systematics)
-        xsecprior = GaussianPrior(["signal", "bkgd"], [0.0, 0.0], [0.1, 0.1])
-        fluxprior = GaussianPrior([("f_%s_%s_0" %(beamname, flavname)) for beambin, beamname in enumerate(["RHC", "FHC"]) for flavbin, flavname in enumerate(["numu", "nue", "numubar", "nuebar"])], [1.0]*8, [0.1]*8)
+        xsecprior = GaussianPrior(["signal", "bkgd"], [0.0, 0.0], [0.1, 0.1], seed=1231)
+        fluxprior = GaussianPrior([("f_%s_%s_0" %(beamname, flavname)) for beambin, beamname in enumerate(["RHC", "FHC"]) for flavbin, flavname in enumerate(["numu", "nue", "numubar", "nuebar"])], [1.0]*8, [0.1]*8, seed=23123)
         prior = CombinedPrior([xsecprior, fluxprior])
         if withosc:
             superk = BinnedSampleWithOscillation("superk", binning, observables, itersuperk, "true_energy", "true_nupdg", 295.0, cache_name="superk_" + cachestr)
