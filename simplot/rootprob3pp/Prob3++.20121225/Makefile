@@ -42,7 +42,7 @@ probRoot: probRoot.o $(lib3p)
 	$(CXX) -o $@ $(CXXFLAGS) -L. $^ $(ROOTLIBS)
 
 
-.PHONY: probRoot.o
+#.PHONY: probRoot.o
 probRoot.o: 
 	$(CXX) -o probRoot.o $(ROOTCFLAGS) $(CXXFLAGS) -c probRoot.cc
 
@@ -53,7 +53,7 @@ probLinear: probLinear.o $(lib3p)
 	$(CXX) -o $@ $(CXXFLAGS) -L. $^ $(ROOTLIBS)
 
 
-.PHONY: probLinear.o
+#.PHONY: probLinear.o
 probLinear.o: 
 	$(CXX) -o probLinear.o $(ROOTCFLAGS) $(CXXFLAGS) -c probLinear.cc
 
@@ -63,7 +63,7 @@ probAnalytic: probAnalytic.o $(lib3p)
 	$(CXX) -o $@ $(CXXFLAGS) -L. $^ $(ROOTLIBS)
 
 
-.PHONY: probAnalytic.o
+#.PHONY: probAnalytic.o
 probAnalytic.o: 
 	$(CXX) -o probAnalytic.o $(ROOTCFLAGS) $(CXXFLAGS) -c probAnalytic.cc
 
