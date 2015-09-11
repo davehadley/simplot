@@ -1,12 +1,16 @@
 
+.PHONY: all
 all: simplot prob3pp
 
+.PHONY: simplot
 simplot:
 	python setup.py build_ext --inplace
 
+.PHONY: prob3pp
 prob3pp:
 	cd simplot/rootprob3pp/Prob3++.20121225 && make all
 
+.PHONY: clean
 clean:
 	-rm simplot/rootplot/cmerge.cpp
 	-rm simplot/rootplot/cmerge.so
@@ -14,3 +18,5 @@ clean:
 	-rm simplot/mc/likelihood/clikelihood.so
 	-rm simplot/sparsehist/*.cpp
 	-rm simplot/sparsehist/*.so
+	-rm simplot/binnedmodel/*.cpp
+	-rm simplot/binnedmodel/*.so
