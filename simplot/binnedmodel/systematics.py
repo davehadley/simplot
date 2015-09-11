@@ -35,7 +35,7 @@ class SplineSystematics(Systematics):
 
     @property
     def parameter_names(self):
-        return self._build_parameter_names(self._spline_parameter_values, None)
+        return self._build_parameter_names(self._spline_parameter_values)
 
     def _buildxsecweights(self, systematicsvalues, systhist, hist):
         xsecweights = None
@@ -56,13 +56,10 @@ class SplineSystematics(Systematics):
         fw = None
         return fw
 
-    def _build_parameter_names(self, systematics, fluxsystematics):
+    def _build_parameter_names(self, systematics):
         parameter_names = []
         if systematics:
             for s, _ in systematics:
-                parameter_names.append(s)
-        if fluxsystematics:
-            for s in fluxsystematics.parameter_names:
                 parameter_names.append(s)
         return parameter_names
 

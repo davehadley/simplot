@@ -12,7 +12,16 @@ from simplot.mc.statistics import Mean, StandardDeviation, calculate_statistics_
 from simplot.mc.likelihood import EventRateLikelihood, SumLikelihood
 from simplot.mc.priors import GaussianPrior, CombinedPrior, OscillationParametersPrior
 from simplot.binnedmodel.sample import Sample, BinnedSample, BinnedSampleWithOscillation, CombinedBinnedSample
-from simplot.binnedmodel.systematics import SplineSystematics, FluxSystematics, FluxAndSplineSystematics
+from simplot.binnedmodel.systematics import Systematics, SplineSystematics, FluxSystematics, FluxAndSplineSystematics
+
+class TestSystematics(unittest.TestCase):
+    def test_systematics_exception(self):
+        syst = Systematics()
+        self.assertEquals(syst.spline_parameter_values, [])
+        with self.assertRaises(NotImplementedError):
+            syst.parameter_names
+        with self.assertRaises(NotImplementedError):
+            syst(None, None, None)
 
 class TestModel(unittest.TestCase):
 
@@ -159,6 +168,7 @@ class TestModel(unittest.TestCase):
         return model, toymc, lhd
 
 def main():
+    #TestModel("test_model_building_withosc").run()
     return unittest.main()
 
 if __name__ == "__main__":
