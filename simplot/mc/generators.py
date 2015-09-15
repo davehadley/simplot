@@ -206,12 +206,25 @@ class MultiVariateGaussianGenerator(Generator):
         self._cov = np.array(cov, copy=True, dtype=float)
         self._sigma = np.sqrt(np.diag(self._cov), dtype=float)
         self._decomp = EigenDecomposition(self._cov)
-        self._eigensigma = np.sqrt(self._decomp.eigenvalues)
+        eigenvalues = self._removenegative(self._decomp.eigenvalues)
+        self._eigensigma = np.sqrt(eigenvalues)
         self._transform = np.array(self._decomp._q)
         for arr in [self._mu, self._cov, self._sigma, self._eigensigma]:
             arr.setflags(write=False)
         self._rng = np.random.RandomState(seed=seed)
         self._verify()
+
+    def _removenegative(self, eigenvalues):
+        printwarning = True
+        eigenvalues = np.array(self._decomp.eigenvalues)
+        #remove negative eigenvalues
+        for ii in xrange(len(eigenvalues)):
+            if eigenvalues[ii] < 0.0:
+                if printwarning:
+                    print "WARNING: MultiVariateGaussianGenerator matrix has negative eigenvalues"
+                    printwarning = False
+                eigenvalues[ii] = 0.0
+        return eigenvalues
 
     def _generate(self):
         mu = self._mu
