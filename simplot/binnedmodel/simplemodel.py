@@ -20,13 +20,15 @@ class SimpleMcBuilder(object):
         self.name = name
         try:
             #assume keep is dict(parnames, splinepoints)
-            items = keep.items()
-            keep, spline_points = zip(*items)
-        except:
+            keys = keep.keys()
+            spline_points = OrderedDict()
+            for k in keep:
+                spline_points[k] = keep[k]
+        except AttributeError:
             #assume keep is list(parnames)
             spline_points = None
         cov, mean = self._generate_covariance_with_cache(toymc=toymc, keep=keep, npe=npe, cache_name=cache_name)
-        splines = self._generate_splines_with_cache(toymc=toymc, keep=keep, spline_points=spline_points, cache_name=cache_name)
+        splines = self._generate_splines_with_cache(toymc=toymc, nominal=toymc.asimov().vec, keep=keep, spline_points=spline_points, cache_name=cache_name)
         ratevector = self._buildratevector(mean, splines)
         generator = self._buildgenerator(toymc, keep, cov)
         toymc = ToyMC(ratevector, generator)
@@ -34,34 +36,34 @@ class SimpleMcBuilder(object):
 
     def _generate_covariance_with_cache(self, toymc, keep, npe=1000, cache_name=None):    
         def func(self=self, toymc=toymc, keep=keep):
-            return self._generate_covariance(toymc, keep)
+            return self._generate_covariance(toymc, keep, npe=npe)
         if cache_name is not None:
             cov = cache("SimpleMcBuilderCovariance_" + cache_name, func)
         else:
             cov = func()
         return cov
 
-    def _generate_splines_with_cache(self, toymc, keep=None, spline_points=None, cache_name=None):
-        def func(self=self, toymc=toymc, keep=keep, spline_points=spline_points):
-            return self._generate_splines(toymc, keep, spline_points)
+    def _generate_splines_with_cache(self, toymc, nominal, keep=None, spline_points=None, cache_name=None):
+        def func(self=self, toymc=toymc, nominal=nominal, keep=keep, spline_points=spline_points):
+            return self._generate_splines(toymc, nominal, keep, spline_points)
         if cache_name is not None:
             cov = cache("SimpleMcBuilderSplines_" + cache_name, func)
         else:
             cov = func()
         return cov
 
-    def _generate_splines(self, toymc, keep=None, spline_points=None):
+    def _generate_splines(self, toymc, nominal, keep=None, spline_points=None):
         result = OrderedDict()
         if spline_points is None:
             spline_points = self._autosplinepoints(toymc, keep)
         for par, xpoints in spline_points.iteritems():
-            y = []
-            for x in points:
+            ypoints = []
+            for x in xpoints:
                 index = toymc.generator.parameter_names.index(par)
                 pars = np.array(toymc.generator.start_values)
                 pars[index] = x
-                y.append(np.array(toymc.ratevector(pars)))
-            wc = SimpleInterpolatedWeightCalc(x=points, y=y)
+                ypoints.append(np.array(toymc.ratevector(pars)))
+            wc = SimpleInterpolatedWeightCalc(nominalvalues=nominal, parvalues=xpoints, arrays=ypoints, parname=par, parameternames=keep)
             result[par] = wc
         return result
 
@@ -81,7 +83,7 @@ class SimpleMcBuilder(object):
         if keep is not None:
             generator.setfixed(set(keep))
         name = "generate covariance matrix for " + str(self.name)
-        calculate_statistics_from_toymc(toymc, [cov, mean], npe, name=name)
+        calculate_statistics_from_toymc(toymc, [cov, mean], npe=npe, name=name)
         if keep is not None:
             generator.setfixed(None)
         return cov.eval(), mean.eval()
@@ -97,7 +99,7 @@ class SimpleMcBuilder(object):
         gen = MultiVariateGaussianGenerator(names, mu=mu, cov=cov)
         if keep is not None:
             subset = GeneratorSubset(keep, toymc.generator)
-            gen = GeneratorList(subset, mvgaus)
+            gen = GeneratorList(subset, gen)
         return gen
 
 ################################################################################
@@ -107,7 +109,7 @@ class SimpleModel(Sample):
         self._nominal = np.array(nominal, dtype=float)
         parameter_names = []
         interp = []
-        for parname, wc in splines:
+        for parname, wc in splines.iteritems():
             parameter_names.append(parname)
             interp.append(wc)
         self._interp = interp

@@ -177,6 +177,10 @@ cdef class InterpolatedWeightCalc:
             raise Exception("missing parameter", parname, parameternames)
         return parnum
 
+    def __call__(self, x):
+        self.update(x)
+        return self.array()
+
     def array(self):
         return self._arr
 
@@ -220,7 +224,7 @@ cdef class SimpleInterpolatedWeightCalc:
         self._parnum = self._findparameter(parname, parameternames)
         self._xvec = parvalues
         self._yvec = [arr/nominalvalues for arr in arrays]
-        self._arr = None
+        self._arr = [0.0] * len(nominalvalues)
         self._parname = parname
         #check inputs
         if not len(arrays) == len(self._xvec):
@@ -234,6 +238,10 @@ cdef class SimpleInterpolatedWeightCalc:
             if msg is None:
                 msg = "SimpleInterpolatedWeightCalc expected sorted values."
             raise Exception(msg, values)
+
+    def __call__(self, x):
+        self.update(x)
+        return self.array()
 
     def __str__(self):
         return "SimpleInterpolatedWeightCalc(%02.0f:%s, range=%s)" % (self._parnum, self._parname, ["%.2e"%x for x in self._xvec])
@@ -265,8 +273,8 @@ cdef class SimpleInterpolatedWeightCalc:
         #inside vector
         cdef i = array_bisect_right(self._xvec, x) - 1
         #print "DEBUG", len(yvec), x, xvec, i
-        cdef SparseArray y0 = self._yvec[i]
-        cdef SparseArray y1 = self._yvec[i+1]
+        cdef vector[double] y0 = self._yvec[i]
+        cdef vector[double] y1 = self._yvec[i+1]
         cdef double x0 = self._xvec[i]
         cdef double x1 = self._xvec[i+1]
         return self._interp(x, x0, x1, y0, y1)

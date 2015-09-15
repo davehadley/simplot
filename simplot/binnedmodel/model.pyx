@@ -255,6 +255,10 @@ cdef class ProbabilityCache:
             else:
                 self.array[enubin, detbin, flav_i, flav_j] = 0.0
 
+    def __call__(self, x):
+        self.update(x)
+        return self.eval()
+
     def _parse_parameter_names(self, parnames):
         theta12 = None
         theta23 = None
