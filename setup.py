@@ -48,6 +48,11 @@ modules = [Extension("simplot.rootplot.cmerge",
                  language = "c++",
                      extra_compile_args=["-std=c++11", "-O3"],
                      extra_link_args=["-std=c++11", "-O3"]),
+           Extension("simplot.binnedmodel.simplemodelwithosc",
+                     ["simplot/binnedmodel/simplemodelwithosc.pyx"],
+                     language = language,
+                     extra_compile_args=extra_compile_args,
+                     extra_link_args=extra_link_args),
 ]
 
 setup(name="simplot",
