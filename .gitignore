@@ -5,6 +5,7 @@
 *.cpp
 
 build/
+run/
 
 #directories created by unit tests
 plots/
@@ -12,3 +13,7 @@ plots/
 #directories created by coverage tests
 .coverage
 htmlcov/
+
+#generated documnetation directories
+doc/html
+

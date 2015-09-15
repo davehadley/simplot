@@ -1,9 +1,9 @@
 
 .PHONY: all
-all: simplot prob3pp
+all: simplot prob3pp doc
 
 .PHONY: simplot
-simplot:
+simplot: prob3pp
 	python setup.py build_ext --inplace
 
 .PHONY: prob3pp
@@ -20,3 +20,7 @@ clean:
 	-rm simplot/sparsehist/*.so
 	-rm simplot/binnedmodel/*.cpp
 	-rm simplot/binnedmodel/*.so
+
+.PHONY: doc
+doc: simplot
+	mkdir -p doc && cd doc && epydoc simplot && echo "simplot documentation: doc/html/index.html"
