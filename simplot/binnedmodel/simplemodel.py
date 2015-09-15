@@ -1,6 +1,7 @@
 from collections import OrderedDict
 
 import numpy as np
+import ROOT
 
 from simplot.mc.generators import GeneratorList, MultiVariateGaussianGenerator, GeneratorSubset
 from simplot.mc.montecarlo import ToyMC
@@ -9,6 +10,8 @@ from simplot.cache import cache
 
 from simplot.binnedmodel.xsecweights import SimpleInterpolatedWeightCalc
 from simplot.binnedmodel.sample import Sample
+
+from simplot.binnedmodel.simplemodelwithosc import SimpleBinnedModelWithOscillation
 
 _PAR_BIN_FORMAT = "bin%02.0f"
 
@@ -132,5 +135,44 @@ class SimpleModel(Sample):
 
 ################################################################################
 
-class SimpleModelWithOscillation(SimpleModel):
-    pass
+class SimpleMcWithOscillationBuilder(SimpleMcBuilder):
+    def build(self, name, toymc, sample, cache_name=None, npe=1000):
+        self.name = name
+        oscpars = toymc.generator.parameter_names[:6]
+        cov, mean = self._generate_covariance_with_cache(toymc=toymc, keep=oscpars, npe=npe, cache_name=cache_name)
+        ratevector = self._buildratevector(oscpars, toymc, sample)
+        generator = self._buildgenerator(toymc, oscpars, cov)
+        toymc = ToyMC(ratevector, generator)
+        return toymc
+
+        
+    def _buildratevector(self, oscpars, toymc, sample):
+        N_sel, N_nosel, observables, enubinning, dim_enu, dim_nupdg, detdist = self._determine_properties(sample)
+        N_sel = self._transform_array(N_sel, observables, enubinning, dim_enu, dim_nupdg)
+        N_nosel = self._transform_array(N_nosel, observables, enubinning, dim_enu, dim_nupdg)
+        parnames = oscpars + [_PAR_BIN_FORMAT % ii for ii in xrange(N_sel.shape[2])]
+        probabilitycalc = ROOT.crootprob3pp.Probability()
+        ratevector = SimpleBinnedModelWithOscillation(parnames, N_sel, N_nosel, enubinning, detdist, probabilitycalc=probabilitycalc)
+        return ratevector
+
+    def _transform_array(self, arr, observables, enubinning, dim_enu, dim_flav):
+        keep = observables
+        enuvec = []
+        for ienu in xrange(len(enubinning) - 1):
+            flavvec = []
+            for iflav in xrange(4):
+                range_ = {dim_enu:(ienu, ienu+1), dim_flav:(iflav, iflav+1)}
+                r = list(arr.project(keep, range_=range_).flatten())
+                flavvec.append(r)
+            enuvec.append(flavvec)
+        return np.array(enuvec)
+
+    def _determine_properties(self, sample):
+        dim_enu = sample.axisnames.index(sample._enu_axis_name)
+        dim_nupdg = sample.axisnames.index(sample._flav_axis_name)
+        enubinning = sample.binedges[dim_enu]
+        observables = [sample.axisnames.index(o) for o in sample.observables]
+        N_sel = sample.N_sel.array()
+        N_nosel = sample.N_nosel.array()
+        detdist = sample._distance
+        return N_sel, N_nosel, observables, enubinning, dim_enu, dim_nupdg, detdist

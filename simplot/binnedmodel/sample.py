@@ -26,13 +26,14 @@ class BinnedSample(Sample):
         self.name = name
         self.axisnames = [n for n, _ in binning]
         self.binedges = [np.array(edges, copy=True) for _, edges in binning]
+        self.observables = observables
         def func():
             return self._loaddata(data, systematics)
         if cache_name:
             data = cache(cache_name, func)
         else:
             data = func()
-        self._model = self._buildmodel(systematics, data, observables)
+        self._model, self.N_sel, self.N_nosel = self._buildmodel(systematics, data, observables)
 
     def _build_parameter_names(self, systematics):
         parameter_names = []
@@ -48,7 +49,7 @@ class BinnedSample(Sample):
         xsec_weights, flux_weights = None, None
         if systematics:
             xsec_weights, flux_weights = systematics(self.parameter_names, systhist, hist)
-        return _BinnedModel(self.parameter_names, hist, observabledim, xsec_weights=xsec_weights, flux_weights=flux_weights)
+        return _BinnedModel(self.parameter_names, hist, observabledim, xsec_weights=xsec_weights, flux_weights=flux_weights), hist, None
 
     def __call__(self, x):
         if len(x) != len(self.parameter_names):
@@ -104,7 +105,8 @@ class BinnedSampleWithOscillation(BinnedSample):
             import simplot.rootprob3pp.lib
             import ROOT
             probabilitycalc = ROOT.crootprob3pp.Probability()
-        return _BinnedModelWithOscillation(self.parameter_names, selhist, noselhist, observabledim, enudim, flavdim, None, [self._distance], xsec_weights=xsec_weights, flux_weights=flux_weights, probabilitycalc=probabilitycalc)
+            print "DEBUG", probabilitycalc
+        return _BinnedModelWithOscillation(self.parameter_names, selhist, noselhist, observabledim, enudim, flavdim, None, [self._distance], xsec_weights=xsec_weights, flux_weights=flux_weights, probabilitycalc=probabilitycalc), selhist, noselhist
 
     def _loaddata(self, data, systematics):
         selhist = SparseHistogram(self.binedges)

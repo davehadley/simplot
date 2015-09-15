@@ -58,7 +58,7 @@ cdef class BinnedModel:
 
 cdef class BinnedModelWithOscillation:
     cdef vector[uint64_t] _shape;
-    #cdef SparseArray N_sel;
+    cdef SparseArray _N_sel;
     cdef SparseArray _eff;
     cdef SparseArray N_nosel;
     cdef vector[uint64_t] _obs;
@@ -75,7 +75,7 @@ cdef class BinnedModelWithOscillation:
         self._parnames = parnames
         self._shape = N_sel.array().shape()
         self._eff = N_sel.array() / N_nosel.array()
-        #self.N_sel = N_sel.array()
+        self._N_sel = N_sel.array()
         self.N_nosel = N_nosel.array()
         self._obs = obs
         self._flav_dimension = flavdim
@@ -254,10 +254,6 @@ cdef class ProbabilityCache:
                 self.array[enubin, detbin, flav_i, flav_j] = 1.0
             else:
                 self.array[enubin, detbin, flav_i, flav_j] = 0.0
-
-    def __call__(self, x):
-        self.update(x)
-        return self.eval()
 
     def _parse_parameter_names(self, parnames):
         theta12 = None

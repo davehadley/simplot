@@ -8,14 +8,15 @@ import unittest
 import numpy as np
 
 from simplot.mc.montecarlo import ToyMC
-from simplot.mc.generators import GaussianGenerator
+
+from simplot.mc.generators import GaussianGenerator, GeneratorList
 from simplot.mc.statistics import Mean, StandardDeviation, calculate_statistics_from_toymc
 from simplot.mc.likelihood import EventRateLikelihood, SumLikelihood
 from simplot.mc.priors import GaussianPrior, CombinedPrior, OscillationParametersPrior
 from simplot.binnedmodel.sample import Sample, BinnedSample, BinnedSampleWithOscillation, CombinedBinnedSample
 from simplot.binnedmodel.systematics import Systematics, SplineSystematics, FluxSystematics, FluxAndSplineSystematics
 
-from simplot.binnedmodel.simplemodel import SimpleMcBuilder
+from simplot.binnedmodel.simplemodel import SimpleMcBuilder, SimpleMcWithOscillationBuilder
 
 ################################################################################
 
@@ -47,7 +48,7 @@ class TestSimpleFit(unittest.TestCase):
         return
 
     def test_eval_model(self):
-        npe = 10**5
+        npe = 10**4
         toymc1 = self._buildtestmc()
         toymc2 = SimpleMcBuilder().build("testmodel", toymc1, npe=npe, keep={"z":[-10.0, -5.0, -3.0, -2.0, -1.0, 0.0, 1.0, 2.0, 3.0, 5.0, 10.0]})
         stat1 = [Mean(), StandardDeviation()]
@@ -61,6 +62,36 @@ class TestSimpleFit(unittest.TestCase):
                 delta = 5.0 * np.sqrt(e1**2 + e2**2)
                 self.assertAlmostEquals(v1, v2, delta=delta)
         return
+
+class TestSimpleFitWithOscillation(unittest.TestCase):
+    def _buildtestmc(self, cachestr=None):
+        systematics = [("x", [-5.0, 0.0, 5.0]),
+                       ("y", [-5.0, 0.0, 5.0]),
+                       ("z", [-5.0, 0.0, 5.0]),
+        ]
+        systematics = SplineSystematics(systematics)
+        def gen(N):
+            for _ in xrange(N):
+                nupdg = np.random.uniform(0.0, 4.0)
+                trueenu = np.random.uniform(0.0, 5.0)
+                recoenu = _smear(trueenu)
+                coord = (trueenu, nupdg, recoenu)
+                yield coord, 0.5, 1.0, [(_smear(-4.0), _smear(1.0), _smear(5.0)), (_smear(-4.0), _smear(1.0), _smear(5.0)), (_smear(-4.0), _smear(1.0), _smear(5.0))]
+        binning = [("trueenu", np.linspace(0.0, 5.0, num=10.0)), ("nupdg", np.arange(0.0, 5.0)), ("recoenu", np.linspace(0.0, 5.0, num=10.0))]
+        observables = ["recoenu"]
+        model = BinnedSampleWithOscillation("simplemodelwithoscillation", binning, observables, gen(10**4), enuaxis="trueenu", flavaxis="nupdg", 
+                                            distance=295.0, systematics=systematics, probabilitycalc=None)
+        oscgen = OscillationParametersPrior().generator
+        systgen = GaussianGenerator(["x", "y", "z"], [0.0, 0.0, 0.0], [1.0, 1.0, 1.0])
+        toymc = ToyMC(model, GeneratorList(oscgen, systgen))
+        return toymc
+
+    def test_build_simple_model_with_osc(self):
+        toymc1 = self._buildtestmc()
+        toymc2 = SimpleMcWithOscillationBuilder().build("testmodel", toymc1, toymc1.ratevector)
+        return
+
+    
 
 ################################################################################
 
