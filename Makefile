@@ -1,6 +1,6 @@
 
 .PHONY: all
-all: simplot prob3pp doc
+all: simplot prob3pp 
 
 .PHONY: simplot
 simplot: prob3pp
