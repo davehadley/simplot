@@ -196,6 +196,24 @@ class GeneratorList(Generator):
         #could not find parameter
         raise ValueError("No known parameter", par1, par2)
 
+###############################################################################
+
+class GeneratorSubset(Generator):
+    def __init__(self, parameter_names, generator):
+        self._indices = [generator.parameter_names.index(p) for p in parameter_names]
+        self._gen = generator
+        start_values = [generators.start_values[ii] for ii in self._indices]
+        super(GeneratorSubset, self).__init__(parameter_names, start_values)
+
+    def _generate(self):
+        x = self._gen()
+        return np.array([x[ii] for ii in self._indices], dtype=float)
+
+    def getsigma(self):
+        return self._gen.getsigma()
+
+    def getcovariance(self):
+        return self._gen.getcovariance()
 
 ###############################################################################
 

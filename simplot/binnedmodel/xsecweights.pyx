@@ -207,3 +207,77 @@ cdef class InterpolatedWeightCalc:
         return sparse_array_interpolation(f, y0, y1)
 
 ################################################################################
+
+cdef class SimpleInterpolatedWeightCalc:
+    cdef int _parnum;
+    cdef vector[double] _xvec;
+    cdef list _yvec;
+    cdef vector[double] _arr;
+    #SparseArray self._arr;
+    cdef str _parname;
+    def __init__(self, nominalvalues, parvalues, arrays, parname, parameternames):
+        self._check_is_sorted(parvalues)
+        self._parnum = self._findparameter(parname, parameternames)
+        self._xvec = parvalues
+        self._yvec = [arr/nominalvalues for arr in arrays]
+        self._arr = None
+        self._parname = parname
+        #check inputs
+        if not len(arrays) == len(self._xvec):
+            raise Exception("SimpleInterpolatedWeightCalc wrong number of input arrays", parname, len(parvalues), len(arrays))
+
+    def _check_is_sorted(self, values, msg=None):
+        l1 = list(values)
+        l2 = list(l1)
+        l2.sort()
+        if not l1 == l2:
+            if msg is None:
+                msg = "SimpleInterpolatedWeightCalc expected sorted values."
+            raise Exception(msg, values)
+
+    def __str__(self):
+        return "SimpleInterpolatedWeightCalc(%02.0f:%s, range=%s)" % (self._parnum, self._parname, ["%.2e"%x for x in self._xvec])
+
+    def _findparameter(self, parname, parameternames):
+        parnum = -1
+        for i, p in enumerate(parameternames):
+            if p == parname:
+                parnum = i
+        if parnum < 0:
+            raise Exception("missing parameter", parname, parameternames)
+        return parnum
+
+    def array(self):
+        return self._arr
+
+    def update(self, pars):
+        #for i in xrange(len(pars)):
+        #    print "DEBUG", i, pars[i]
+        x = pars[self._parnum]
+        self._arr = self.eval(x)
+
+    cdef vector[double] eval(self, double x):
+        cdef int last = self._xvec.size() - 1
+        if x <= self._xvec[0]:
+            return self._yvec[0]
+        if x >= self._xvec[last]:
+            return self._yvec[last]
+        #inside vector
+        cdef i = array_bisect_right(self._xvec, x) - 1
+        #print "DEBUG", len(yvec), x, xvec, i
+        cdef SparseArray y0 = self._yvec[i]
+        cdef SparseArray y1 = self._yvec[i+1]
+        cdef double x0 = self._xvec[i]
+        cdef double x1 = self._xvec[i+1]
+        return self._interp(x, x0, x1, y0, y1)
+
+    cdef vector[double] _interp(self, double x, double x0, double x1, vector[double]& y0, vector[double]& y1):
+        cdef double f = (x-x0) / (x1-x0)
+        cdef vector[double] y = vector[double](y0.size())
+        cdef int ii
+        for ii in xrange(y.size()):
+            y[ii] = f*y1[ii] + (1.0-f)*y0[ii]
+        #return f*y1 + (1.0-f)*y0
+        return y
+
+################################################################################
