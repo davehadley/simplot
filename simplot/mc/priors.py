@@ -35,25 +35,29 @@ class CombinedPrior(Prior):
         super(CombinedPrior, self).__init__(gen, lhd)
 
 class OscillationParametersPrior(CombinedPrior):
-    def __init__(self, values=None, usereactorconstraint=False):
+    def __init__(self, values=None, usereactorconstraint=False, seed=None):
         if values is None:
             values = PdgNeutrinoOscillationParameters()
-        priors = self._buildpriors(values, usereactorconstraint=usereactorconstraint)
+        priors = self._buildpriors(values, usereactorconstraint=usereactorconstraint, seed=seed)
         super(OscillationParametersPrior, self).__init__(priors)
         
-    def _buildpriors(self, values, usereactorconstraint):
+    def _buildpriors(self, values, usereactorconstraint, seed=None):
+        if seed is not None:
+            seed = seed + 230932904 # offset seed, incase user is giving sequential seeds to various generators.
         priors = []
         parnames = type(values).ALL_PARS_SINSQ2
         for p in parnames:
+            if seed is not None:
+                seed += 1
             val = values.value(p)
             err = values.error(p)
             if p == type(values).DELTACP:
-                p = UniformPrior([p], [val], range_=[(-math.pi, math.pi)])
+                p = UniformPrior([p], [val], range_=[(-math.pi, math.pi)], seed=seed)
             elif p == type(values).THETA13 and not usereactorconstraint:
-                p = UniformPrior([p], [val], range_=[(-math.pi, math.pi)])
+                p = UniformPrior([p], [val], range_=[(-math.pi, math.pi)], seed=seed)
             elif p == type(values).SINSQ2THETA13 and not usereactorconstraint:
-                p = UniformPrior([p], [val], range_=[(0.0, 1.0)])
+                p = UniformPrior([p], [val], range_=[(0.0, 1.0)], seed=seed)
             else:
-                p = GaussianPrior([p], mu=[val], sigma=[err])
+                p = GaussianPrior([p], mu=[val], sigma=[err], seed=seed)
             priors.append(p)
         return priors

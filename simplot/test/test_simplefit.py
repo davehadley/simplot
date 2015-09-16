@@ -20,8 +20,8 @@ from simplot.binnedmodel.simplemodel import SimpleMcBuilder, SimpleMcWithOscilla
 
 ################################################################################
 
-def _smear(x, resolution=0.1):
-    return np.random.normal(loc=1.0, scale=resolution) * x
+def _smear(x, state=np.random, resolution=0.1):
+    return state.normal(loc=1.0, scale=resolution) * x
 
 class TestSimpleFit(unittest.TestCase):
 
@@ -31,14 +31,15 @@ class TestSimpleFit(unittest.TestCase):
                        ("z", [-10.0, -5.0, 0.0, 5.0, 10.0]),
         ]
         systematics = SplineSystematics(systematics)
+        random = np.random.RandomState(seed=1223)
         def gen(N):
             for _ in xrange(N):
-                coord = np.random.poisson(size=2)
-                yield coord, 1.0, [(_smear(-4.0), _smear(1.0), _smear(5.0)), (_smear(-4.0), _smear(1.0), _smear(5.0)), (_smear(-9.0), _smear(-4.0), _smear(1.0), _smear(5.0), _smear(10.0))]
+                coord = random.poisson(size=2)
+                yield coord, 1.0, [(_smear(-4.0, random), _smear(1.0, random), _smear(5.0, random)), (_smear(-4.0, random), _smear(1.0, random), _smear(5.0, random)), (_smear(-9.0, random), _smear(-4.0, random), _smear(1.0, random), _smear(5.0, random), _smear(10.0, random))]
         binning = [("a", np.arange(0.0, 5.0)), ("b", np.arange(0.0, 5.0))]
         observables = ["a"]
         model = BinnedSample("simplemodel", binning, observables, gen(10**4), systematics=systematics, cache_name=cachestr)
-        generator = GaussianGenerator(["x", "y", "z"], [1.0, 2.0, 3.0], [1.0, 2.0, 3.0])
+        generator = GaussianGenerator(["x", "y", "z"], [1.0, 2.0, 3.0], [1.0, 2.0, 3.0], seed=1224)
         toymc = ToyMC(model, generator)
         return toymc
 
@@ -50,7 +51,7 @@ class TestSimpleFit(unittest.TestCase):
     def test_eval_model(self):
         npe = 10**4
         toymc1 = self._buildtestmc()
-        toymc2 = SimpleMcBuilder().build("testmodel", toymc1, npe=npe, keep={"z":[-10.0, -5.0, -3.0, -2.0, -1.0, 0.0, 1.0, 2.0, 3.0, 5.0, 10.0]})
+        toymc2 = SimpleMcBuilder().build("testmodel", toymc1, npe=npe, keep={"z":[-10.0, -5.0, 0.0, 1.0, 5.0, 10.0]})
         stat1 = [Mean(), StandardDeviation()]
         stat2 = [Mean(), StandardDeviation()]
         calculate_statistics_from_toymc(toymc1, stat1, npe=npe)
@@ -70,19 +71,20 @@ class TestSimpleFitWithOscillation(unittest.TestCase):
                        ("z", [-5.0, 0.0, 5.0]),
         ]
         systematics = SplineSystematics(systematics)
+        random = np.random.RandomState(1222)
         def gen(N):
             for _ in xrange(N):
-                nupdg = np.random.uniform(0.0, 4.0)
-                trueenu = np.random.uniform(0.0, 5.0)
-                recoenu = _smear(trueenu)
+                nupdg = random.uniform(0.0, 4.0)
+                trueenu = random.uniform(0.0, 5.0)
+                recoenu = _smear(trueenu, random)
                 coord = (trueenu, nupdg, recoenu)
-                yield coord, 0.5, 1.0, [(_smear(-4.0), _smear(1.0), _smear(5.0)), (_smear(-4.0), _smear(1.0), _smear(5.0)), (_smear(-4.0), _smear(1.0), _smear(5.0))]
+                yield coord, 0.5, 1.0, [(_smear(-4.0, random), _smear(1.0, random), _smear(5.0, random)), (_smear(-4.0, random), _smear(1.0, random), _smear(5.0, random)), (_smear(-4.0, random), _smear(1.0, random), _smear(5.0, random))]
         binning = [("trueenu", np.linspace(0.0, 5.0, num=10.0)), ("nupdg", np.arange(0.0, 5.0)), ("recoenu", np.linspace(0.0, 5.0, num=10.0))]
         observables = ["recoenu"]
         model = BinnedSampleWithOscillation("simplemodelwithoscillation", binning, observables, gen(10**4), enuaxis="trueenu", flavaxis="nupdg", 
                                             distance=295.0, systematics=systematics, probabilitycalc=None)
-        oscgen = OscillationParametersPrior().generator
-        systgen = GaussianGenerator(["x", "y", "z"], [0.0, 0.0, 0.0], [1.0, 1.0, 1.0])
+        oscgen = OscillationParametersPrior(seed=1225).generator
+        systgen = GaussianGenerator(["x", "y", "z"], [0.0, 0.0, 0.0], [1.0, 1.0, 1.0], seed=1226)
         toymc = ToyMC(model, GeneratorList(oscgen, systgen))
         return toymc
 

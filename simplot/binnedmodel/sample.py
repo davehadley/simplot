@@ -105,7 +105,6 @@ class BinnedSampleWithOscillation(BinnedSample):
             import simplot.rootprob3pp.lib
             import ROOT
             probabilitycalc = ROOT.crootprob3pp.Probability()
-            print "DEBUG", probabilitycalc
         return _BinnedModelWithOscillation(self.parameter_names, selhist, noselhist, observabledim, enudim, flavdim, None, [self._distance], xsec_weights=xsec_weights, flux_weights=flux_weights, probabilitycalc=probabilitycalc), selhist, noselhist
 
     def _loaddata(self, data, systematics):
