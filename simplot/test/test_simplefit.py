@@ -110,9 +110,6 @@ class TestSimpleFitWithOscillation(unittest.TestCase):
         calculate_statistics_from_toymc(toymc1, stat1, npe=npe)
         calculate_statistics_from_toymc(toymc2, stat2, npe=npe)
         for st1, st2 in zip(stat1, stat2):
-            print "DEBUG checking", st1, st2
-            print "DEBUG check st1=",st1.eval()
-            print "DEBUG check st2=",st2.eval()
             v1, e1 = st1.eval(), st1.err()
             v2, e2 = st2.eval(), st2.err()
             for v1, e1, v2, e2 in zip(np.nditer(v1), np.nditer(e1), np.nditer(v2), np.nditer(e2)):
@@ -161,26 +158,29 @@ class TestOscillationCalculation(unittest.TestCase):
         return toymc
 
     def test_osccalc(self):
-        flav_index = {0:2, 1:1, 2:2, 3:1,}
         flav_other = {0:1, 1:0, 2:3, 3:2}
         for iflav in xrange(4):
             for jflav in [iflav, flav_other[iflav]]:
                 toymc = self.build1flavmodel(iflav, jflav)
-                asimov = toymc.asimov()
-                observed = asimov.vec
-                oscpars = asimov.pars[:6]
-                probabilitycalc = ROOT.crootprob3pp.Probability()
-                probabilitycalc.setAll(*oscpars)
-                probabilitycalc.setBaseline(295.0)
-                probabilitycalc.update()
-                if iflav > 1:
-                    cp = -1
-                else:
-                    cp = 1
-                prediction = [probabilitycalc.getVacuumProbability(flav_index[iflav], flav_index[jflav], enu, cp) for enu in self.enubincentres]
-                for enu, p, o in itertools.izip_longest(self.enubincentres, prediction, observed):
-                    self.assertAlmostEquals(p, o)
-                #raw_input("wait")
+                self.check_osccalc(toymc, iflav, jflav)
+        return
+
+    def check_osccalc(self, toymc, iflav, jflav):
+        flav_index = {0:2, 1:1, 2:2, 3:1,}
+        asimov = toymc.asimov()
+        observed = asimov.vec
+        oscpars = asimov.pars[:6]
+        probabilitycalc = ROOT.crootprob3pp.Probability()
+        probabilitycalc.setAll(*oscpars)
+        probabilitycalc.setBaseline(295.0)
+        probabilitycalc.update()
+        if iflav > 1:
+            cp = -1
+        else:
+            cp = 1
+        prediction = [probabilitycalc.getVacuumProbability(flav_index[iflav], flav_index[jflav], enu, cp) for enu in self.enubincentres]
+        for enu, p, o in itertools.izip_longest(self.enubincentres, prediction, observed):
+            self.assertAlmostEquals(p, o)
         return
             
 
