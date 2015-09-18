@@ -161,8 +161,10 @@ class TestOscillationCalculation(unittest.TestCase):
         flav_other = {0:1, 1:0, 2:3, 3:2}
         for iflav in xrange(4):
             for jflav in [iflav, flav_other[iflav]]:
-                toymc = self.build1flavmodel(iflav, jflav)
-                self.check_osccalc(toymc, iflav, jflav)
+                toymc1 = self.build1flavmodel(iflav, jflav)
+                toymc2 = SimpleMcWithOscillationBuilder().build("testmodelwithosc", toymc1, toymc1.ratevector)
+                self.check_osccalc(toymc1, iflav, jflav)
+                self.check_osccalc(toymc2, iflav, jflav)
         return
 
     def check_osccalc(self, toymc, iflav, jflav):
