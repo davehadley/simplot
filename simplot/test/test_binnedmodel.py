@@ -10,9 +10,12 @@ import numpy as np
 from simplot.mc.montecarlo import ToyMC
 from simplot.mc.statistics import Mean, StandardDeviation, calculate_statistics_from_toymc
 from simplot.mc.likelihood import EventRateLikelihood, SumLikelihood
+from simplot.mc.generators import GaussianGenerator, GeneratorList
 from simplot.mc.priors import GaussianPrior, CombinedPrior, OscillationParametersPrior
 from simplot.binnedmodel.sample import Sample, BinnedSample, BinnedSampleWithOscillation, CombinedBinnedSample
 from simplot.binnedmodel.systematics import Systematics, SplineSystematics, FluxSystematics, FluxAndSplineSystematics
+
+################################################################################
 
 class TestSystematics(unittest.TestCase):
     def test_systematics_exception(self):
@@ -22,6 +25,8 @@ class TestSystematics(unittest.TestCase):
             syst.parameter_names
         with self.assertRaises(NotImplementedError):
             syst(None, None, None)
+
+################################################################################
 
 class TestModel(unittest.TestCase):
 
@@ -166,6 +171,50 @@ class TestModel(unittest.TestCase):
         lhd_prior = prior.likelihood
         lhd = SumLikelihood([lhd_data, lhd_prior])
         return model, toymc, lhd
+
+################################################################################
+
+class TestOscillationCalculation(unittest.TestCase):
+
+    def _buildtestmc(self, cachestr=None):
+        systematics = [("x", [-5.0, 0.0, 5.0]),
+                       ("y", [-5.0, 0.0, 5.0]),
+                       ("z", [-5.0, 0.0, 5.0]),
+        ]
+        systematics = SplineSystematics(systematics)
+        random = np.random.RandomState(1222)
+        def gen(N):
+            for _ in xrange(N):
+                nupdg = random.uniform(0.0, 4.0)
+                trueenu = random.uniform(0.0, 5.0)
+                recoenu = random.uniform(1.0, 0.1) * trueenu
+                coord = (trueenu, nupdg, recoenu)
+                yield coord, 1.0, 1.0, [(-4., 1.0, 6.0), (-4.0, 1.0, 6.0), (-4.0, 1.0, 6.0)]
+        binning = [("trueenu", np.linspace(0.0, 5.0, num=10.0)), ("nupdg", np.arange(0.0, 5.0)), ("recoenu", np.linspace(0.0, 5.0, num=10.0))]
+        observables = ["recoenu"]
+        model = BinnedSampleWithOscillation("simplemodelwithoscillation", binning, observables, gen(10**4), enuaxis="trueenu", flavaxis="nupdg", 
+                                            distance=295.0, systematics=systematics, probabilitycalc=None)
+        oscgen = OscillationParametersPrior(seed=1225).generator
+        systgen = GaussianGenerator(["x", "y", "z"], [0.0, 0.0, 0.0], [0.1, 0.1, 0.1], seed=1226)
+        #toymc = ToyMC(model, GeneratorList(oscgen))
+        toymc = ToyMC(model, GeneratorList(oscgen, systgen))
+        return toymc
+
+    def test_systematics(self):
+        toymc = self._buildtestmc()
+        asimov = toymc.asimov()
+        model = toymc.ratevector
+        for scale in np.linspace(0.1, 1.9, num=10):
+            for ipar in xrange(3):
+                pars = np.copy(asimov.pars)
+                pars[ipar+6] = scale - 1.0
+                vec = model(pars)
+                for val, expected in itertools.izip_longest(vec, asimov.vec):
+                    if expected > 0.0:
+                        self.assertAlmostEqual(val / expected, scale)
+        return
+
+################################################################################
 
 def main():
     #TestModel("test_model_building_withosc").run()

@@ -222,7 +222,7 @@ class MultiVariateGaussianGenerator(Generator):
         super(MultiVariateGaussianGenerator, self).__init__(parameter_names, start_values=mu)
         self._mu = np.array(mu, copy=True, dtype=float)
         self._cov = np.array(cov, copy=True, dtype=float)
-        self._sigma = np.sqrt(np.diag(self._cov), dtype=float)
+        self._sigma = np.sqrt(self._removenegative(np.diag(self._cov)), dtype=float)
         self._decomp = EigenDecomposition(self._cov)
         eigenvalues = self._removenegative(self._decomp.eigenvalues)
         self._eigensigma = np.sqrt(eigenvalues)
@@ -234,7 +234,7 @@ class MultiVariateGaussianGenerator(Generator):
 
     def _removenegative(self, eigenvalues):
         printwarning = True
-        eigenvalues = np.array(self._decomp.eigenvalues)
+        eigenvalues = np.array(eigenvalues)
         #remove negative eigenvalues
         for ii in xrange(len(eigenvalues)):
             if eigenvalues[ii] < 0.0:

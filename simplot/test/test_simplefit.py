@@ -46,6 +46,8 @@ class TestSimpleFit(unittest.TestCase):
     def test_build_simple_model(self):
         toymc1 = self._buildtestmc()
         toymc2 = SimpleMcBuilder().build("testmodel", toymc1)
+        #generate a single event
+        toymc2()
         return
 
     def test_eval_model(self):
@@ -78,21 +80,42 @@ class TestSimpleFitWithOscillation(unittest.TestCase):
                 trueenu = random.uniform(0.0, 5.0)
                 recoenu = _smear(trueenu, random)
                 coord = (trueenu, nupdg, recoenu)
-                yield coord, 0.5, 1.0, [(_smear(-4.0, random), _smear(1.0, random), _smear(5.0, random)), (_smear(-4.0, random), _smear(1.0, random), _smear(5.0, random)), (_smear(-4.0, random), _smear(1.0, random), _smear(5.0, random))]
+                yield coord, 1.0, 1.0, [(_smear(-4.0, random), _smear(1.0, random), _smear(6.0, random)), (_smear(-4.0, random), _smear(1.0, random), _smear(6.0, random)), (_smear(-4.0, random), _smear(1.0, random), _smear(6.0, random))]
         binning = [("trueenu", np.linspace(0.0, 5.0, num=10.0)), ("nupdg", np.arange(0.0, 5.0)), ("recoenu", np.linspace(0.0, 5.0, num=10.0))]
         observables = ["recoenu"]
         model = BinnedSampleWithOscillation("simplemodelwithoscillation", binning, observables, gen(10**4), enuaxis="trueenu", flavaxis="nupdg", 
                                             distance=295.0, systematics=systematics, probabilitycalc=None)
         oscgen = OscillationParametersPrior(seed=1225).generator
-        systgen = GaussianGenerator(["x", "y", "z"], [0.0, 0.0, 0.0], [1.0, 1.0, 1.0], seed=1226)
+        systgen = GaussianGenerator(["x", "y", "z"], [0.0, 0.0, 0.0], [0.1, 0.1, 0.1], seed=1226)
+        #toymc = ToyMC(model, GeneratorList(oscgen))
         toymc = ToyMC(model, GeneratorList(oscgen, systgen))
         return toymc
 
     def test_build_simple_model_with_osc(self):
         toymc1 = self._buildtestmc()
-        toymc2 = SimpleMcWithOscillationBuilder().build("testmodel", toymc1, toymc1.ratevector)
+        toymc2 = SimpleMcWithOscillationBuilder().build("testmodelwithosc", toymc1, toymc1.ratevector)
+        #generate a single event
+        toymc2()
         return
 
+    def test_eval_model(self):
+        npe = 10**3
+        toymc1 = self._buildtestmc()
+        toymc2 = SimpleMcWithOscillationBuilder().build("testmodelwithosc", toymc1, toymc1.ratevector, npe=npe)
+        stat1 = [Mean(), StandardDeviation()]
+        stat2 = [Mean(), StandardDeviation()]
+        calculate_statistics_from_toymc(toymc1, stat1, npe=npe)
+        calculate_statistics_from_toymc(toymc2, stat2, npe=npe)
+        for st1, st2 in zip(stat1, stat2):
+            print "DEBUG checking", st1, st2
+            print "DEBUG check st1=",st1.eval()
+            print "DEBUG check st2=",st2.eval()
+            v1, e1 = st1.eval(), st1.err()
+            v2, e2 = st2.eval(), st2.err()
+            for v1, e1, v2, e2 in zip(np.nditer(v1), np.nditer(e1), np.nditer(v2), np.nditer(e2)):
+                delta = 5.0 * np.sqrt(e1**2 + e2**2)
+                self.assertAlmostEquals(v1, v2, delta=delta)
+        return
     
 
 ################################################################################

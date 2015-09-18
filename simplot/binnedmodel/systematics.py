@@ -25,7 +25,7 @@ class SplineSystematics(Systematics):
         self._spline_parameter_values = spline_parameter_values
 
     def __call__(self, parameter_names, systhist, nominalhist):
-        xsec_weights = self._buildxsecweights(self.spline_parameter_values, systhist, nominalhist)
+        xsec_weights = self._buildxsecweights(self.spline_parameter_values, parameter_names, systhist, nominalhist)
         flux_weights = self._buildfluxweights()
         return xsec_weights, flux_weights
 
@@ -37,7 +37,7 @@ class SplineSystematics(Systematics):
     def parameter_names(self):
         return self._build_parameter_names(self._spline_parameter_values)
 
-    def _buildxsecweights(self, systematicsvalues, systhist, hist):
+    def _buildxsecweights(self, systematicsvalues, parameter_names, systhist, hist):
         xsecweights = None
         if systematicsvalues is not None:
             wclist = []
@@ -47,7 +47,7 @@ class SplineSystematics(Systematics):
                 l.sort() # sort by parameter value
                 weights = [x[1].array() for x in l] 
                 parval = [x[0] for x in l]
-                wc = InterpolatedWeightCalc(hist.array(), parval, weights, syst, self.parameter_names)
+                wc = InterpolatedWeightCalc(hist.array(), parval, weights, syst, parameter_names)
                 wclist.append(wc)
             xsecweights = XsecWeights(hist.array(), wclist)
         return xsecweights

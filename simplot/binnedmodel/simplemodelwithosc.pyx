@@ -37,7 +37,7 @@ cdef class SimpleBinnedModelWithOscillation:
         self._otherflav = np.array([1,0,3,2], dtype=int)
         self._prob = ProbabilityCache(parnames, enubinning, [detdist], probabilitycalc=probabilitycalc)
         self._cache3D = np.copy(N_sel)
-        self._cache1D = np.copy(np.sum(N_sel, axis=_DIM_RECO))
+        self._cache1D = np.copy(np.sum(N_sel, axis=(_DIM_NUPDG, _DIM_ENU)))
         return
 
     def __call__(self, pars):
@@ -51,12 +51,13 @@ cdef class SimpleBinnedModelWithOscillation:
         return pars[_NUM_OSC_PARS:]
 
     cdef void _updateprediction(self, pars):
-        np.multiply(self._eff, self._osc_flav_rotation(pars, self.N_nosel), out=self._cache3D)
-        np.sum(self._cache3D, axis=_DIM_ENU, out=self._cache1D)
+        self._osc_flav_rotation(pars, self.N_nosel)
+        np.multiply(self._eff, self._cache3D, out=self._cache3D)
+        np.sum(self._cache3D, axis=(_DIM_NUPDG, _DIM_ENU), out=self._cache1D)
         return
 
 #    @cython.boundscheck(False)
-    cdef np.ndarray[np.float64_t, ndim=3] _osc_flav_rotation(self, pars, np.ndarray[np.float64_t, ndim=3] arr):
+    cdef void _osc_flav_rotation(self, pars, np.ndarray[np.float64_t, ndim=3] arr):
         #get inputs
         cdef np.ndarray[double, ndim=4] posc = self._prob.array
         cdef np.ndarray[np.float64_t, ndim=3] result = self._cache3D
@@ -74,11 +75,11 @@ cdef class SimpleBinnedModelWithOscillation:
                     flav_i = otherflav[flav_j]
                     pdis = posc[ienu, 0, flav_j, flav_j]
                     papp = posc[ienu, 0, flav_i, flav_j]
-                    value = arr[ienu, 0, flav_j, ireco]
+                    value = arr[ienu, flav_j, ireco]
                     othervalue = arr[ienu, flav_i, ireco]
                     nosc = (pdis * value) + (papp * othervalue)
                     result[ienu, flav_j, ireco] = nosc
-        return result
+        return
 
     @property
     def parameter_names(self):
