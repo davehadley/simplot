@@ -18,6 +18,9 @@ from simplot.binnedmodel.systematics import Systematics, SplineSystematics, Flux
 
 from simplot.binnedmodel.simplemodel import SimpleMcBuilder, SimpleMcWithOscillationBuilder
 
+import simplot.rootprob3pp.lib
+import ROOT
+
 ################################################################################
 
 def _smear(x, state=np.random, resolution=0.1):
@@ -116,7 +119,70 @@ class TestSimpleFitWithOscillation(unittest.TestCase):
                 delta = 5.0 * np.sqrt(e1**2 + e2**2)
                 self.assertAlmostEquals(v1, v2, delta=delta)
         return
-    
+
+################################################################################
+
+class TestOscillationCalculation(unittest.TestCase):
+
+    def setUp(self):
+        self.enubinning = np.linspace(0.0, 5.0, num=100.0)
+        self.enubincentres = (self.enubinning[1:] + self.enubinning[:-1]) / 2.0
+
+    def build1flavmodel(self, iflav, jflav):
+        systematics = [("x", [-5.0, 0.0, 5.0]),
+                       ("y", [-5.0, 0.0, 5.0]),
+                       ("z", [-5.0, 0.0, 5.0]),
+        ]
+        enubinning = self.enubinning
+        systematics = SplineSystematics(systematics)
+        random = np.random.RandomState(1222)
+        def gen(N, iflav=iflav, jflav=jflav):
+            for trueenu in self.enubincentres:
+                recoenu = trueenu
+                for flavbin in [0.0, 1.0, 2.0, 3.0]:
+                    if flavbin == jflav:
+                        eff = 1.0
+                    else:
+                        eff = 1e-9
+                    if flavbin == iflav:
+                        weight = 1.0
+                    else:
+                        weight = 1e-9
+                    coord = (trueenu, flavbin, recoenu)
+                    yield coord, eff*weight, weight, [(-4.0, 1.0, 6.0), (-4.0, 1.0, 6.0), (-4.0, 1.0, 6.0)]
+        binning = [("trueenu", enubinning), ("nupdg", np.arange(0.0, 5.0)), ("recoenu", enubinning)]
+        observables = ["recoenu"]
+        model = BinnedSampleWithOscillation("flatmodelwithoscillation", binning, observables, gen(10**4), enuaxis="trueenu", flavaxis="nupdg", 
+                                            distance=295.0, systematics=systematics, probabilitycalc=None)
+        oscgen = OscillationParametersPrior(seed=1225).generator
+        systgen = GaussianGenerator(["x", "y", "z"], [0.0, 0.0, 0.0], [0.1, 0.1, 0.1], seed=1226)
+        #toymc = ToyMC(model, GeneratorList(oscgen))
+        toymc = ToyMC(model, GeneratorList(oscgen, systgen))
+        return toymc
+
+    def test_osccalc(self):
+        flav_index = {0:2, 1:1, 2:2, 3:1,}
+        flav_other = {0:1, 1:0, 2:3, 3:2}
+        for iflav in xrange(4):
+            for jflav in [iflav, flav_other[iflav]]:
+                toymc = self.build1flavmodel(iflav, jflav)
+                asimov = toymc.asimov()
+                observed = asimov.vec
+                oscpars = asimov.pars[:6]
+                probabilitycalc = ROOT.crootprob3pp.Probability()
+                probabilitycalc.setAll(*oscpars)
+                probabilitycalc.setBaseline(295.0)
+                probabilitycalc.update()
+                if iflav > 1:
+                    cp = -1
+                else:
+                    cp = 1
+                prediction = [probabilitycalc.getVacuumProbability(flav_index[iflav], flav_index[jflav], enu, cp) for enu in self.enubincentres]
+                for enu, p, o in itertools.izip_longest(self.enubincentres, prediction, observed):
+                    self.assertAlmostEquals(p, o)
+                #raw_input("wait")
+        return
+            
 
 ################################################################################
 
