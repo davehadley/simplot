@@ -1,3 +1,4 @@
+# cython: profile=True
 
 import itertools
 import collections
@@ -108,6 +109,7 @@ class Covariance(object):
         self._fractional = fractional
     
     def add(self, vec):
+        vec = np.array(vec, copy=False) # convert to vec
         self._count += 1
         try:
             self._sumw += vec
@@ -118,7 +120,10 @@ class Covariance(object):
         return
     
     def _product(self, a, b):
-         return np.array([bi * a for bi in b])
+        #return np.array([bi * a for bi in b])
+        ax = a.reshape((a.shape[0], 1))
+        bx = b.reshape((b.shape[0], 1))
+        return np.dot(ax, bx.T)
     
     def _mean(self):
         return np.divide(self._sumw, float(self._count))
