@@ -2,6 +2,7 @@ import itertools
 
 from simplot.pdg import PdgNeutrinoOscillationParameters
 from simplot.cache import cache
+from simplot.mc.montecarlo import MonteCarloParameterMismatch
 import simplot.sparsehist.sparsehist
 from simplot.sparsehist import SparseHistogram
 from simplot.binnedmodel.model import BinnedModel as _BinnedModel
@@ -157,7 +158,7 @@ class CombinedBinnedSample(Sample):
                     parameter_names.append(p)
         if parameter_order:
             if not set(parameter_names) == set(parameter_order):
-                raise Exception("user parameter order does not contain the correct parameters")
+                raise Exception("user parameter order does not contain the correct parameters", MonteCarloParameterMismatch.compare_parameters_message(parameter_names, parameter_order))
             parameter_names = list(parameter_order)
         mapping = []
         for s in samples:
