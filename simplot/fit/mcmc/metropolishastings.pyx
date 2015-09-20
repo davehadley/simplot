@@ -3,6 +3,11 @@ cimport numpy as np
 
 ################################################################################
 
+class McMcSetupError(Exception):
+    pass
+
+################################################################################
+
 cdef class MetropolisHastingsAlgorithm(object):
     cdef np.ndarray _start
     cdef np.ndarray _low
