@@ -12,11 +12,11 @@ from simplot.fit.mcmc.proposalfunc import GaussianProposalFunction
 class TestMcMc(unittest.TestCase):
 
     def setUp(self):
-        self._num_dim = 2
+        self._num_dim = 10
 
     def test_gaussian(self):
         num_dim = self._num_dim
-        mu = np.arange(0, num_dim, dtype=float)
+        mu = np.arange(1, num_dim + 1, dtype=float)
         sigma = np.arange(1, num_dim + 1, dtype=float)
         parameter_names = ["par_" + str(m) for m in mu]
         lhd = GaussianLikelihood(parameter_names, mu, sigma)
@@ -39,17 +39,19 @@ class TestMcMc(unittest.TestCase):
             ret = toymc()
             return ret[0]
         calculate_statistics(func, statistics, npe)
+        # use large window as error esitmate too small for MCMC
+        delta = 0.1
         # compare mean results
         for x, err, expected in zip(mean.eval(), mean.err(), mu):
-            self.assertAlmostEquals(x, expected, delta=10.0*err) # use large window as error esitmate too small for MCMC
+            self.assertAlmostEquals(x, expected, delta=delta*expected) 
         # compare stddev results
         for x, err, expected in zip(stddev.eval(), stddev.err(), sigma):
-            self.assertAlmostEquals(x, expected, delta=10.0*err)
+            self.assertAlmostEquals(x, expected, delta=delta*expected)
         # compare covariance results
         covval = cov.eval()
         coverr = cov.err()
         for ii, jj in itertools.product(xrange(len(expectedcov)), repeat=2):
-            self.assertAlmostEquals(covval[ii,jj], expectedcov[ii,jj], delta=10.0*coverr[ii,jj])
+            self.assertAlmostEquals(covval[ii,jj], expectedcov[ii,jj], delta=delta*max(expectedcov[ii,ii], expectedcov[jj, jj]))
         return 
 
 def main():
