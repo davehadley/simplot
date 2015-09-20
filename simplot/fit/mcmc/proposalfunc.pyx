@@ -1,3 +1,6 @@
+# cython: profile=True
+
+cimport cython
 import numpy as np
 cimport numpy as np
 import StringIO
@@ -16,12 +19,43 @@ from libc.math cimport sin, sqrt, log, M_PI, asin
 
 _RANDOM = np.random.RandomState(231321)
 
-cdef _gaus_generate(np.ndarray[double, ndim=1] result, np.ndarray[double, ndim=1] mu, np.ndarray[double, ndim=1] sigma):
-    cdef int N = len(result)
-    cdef np.ndarray[double, ndim=1] normal = _RANDOM.normal(size=N);
+cdef class NormalGenerator:
+    cdef object _random
+    cdef np.ndarray _cache;
+    cdef int _N
+    cdef int _count
+    def __cinit__(self):
+        self._random = np.random.RandomState(231321)
+        self._N = 1000
+        self._gen()
+
+    cdef _gen(self):
+        self._cache = self._random.normal(size=self._N)
+        self._count = 0
+        return
+
+    def normal(self):
+        if self._count >= self._N:
+            self._gen()
+        cdef double r = self._cache[self._count]
+        self._count += 1
+        return r
+        
+
+_NORMAL = NormalGenerator()
+
+cdef double _normal():
+    return _NORMAL.normal()
+
+###############################################################################
+
+@cython.boundscheck(False)
+cdef void _gaus_generate(np.ndarray[double, ndim=1] result, np.ndarray[double, ndim=1] mu, np.ndarray[double, ndim=1] sigma):
+    cdef int N = result.shape[0]
+    #cdef np.ndarray[double, ndim=1] normal = _RANDOM.normal(size=N);
     cdef int ii
     for ii in xrange(N):
-        result[ii] = mu[ii] + sigma[ii] * normal[ii]
+        result[ii] = mu[ii] + sigma[ii] * _normal()
     return
 
 cdef double _sinsqtheta2gaussian_log_density_i(x, mu, sigma):
@@ -35,9 +69,10 @@ cdef _sinsq2theta(theta):
 
 cdef double _sinthetagaussian_log_density_i(x, mu, sigma):
         cdef int N = len(x)
-        cdef double y
+        cdef double y, chi2
         cdef double jacobian = 0.0
-        cdef double result = gaus_log_density(y, mu, sigma)
+        cdef double gaus = 0.0
+        cdef double result = 0.0
         #compute jacobian
         for ii in xrange(N):
             y = sin(2.0*x[ii])
@@ -47,6 +82,8 @@ cdef double _sinthetagaussian_log_density_i(x, mu, sigma):
                 y = 0.001;
             elif(y > (1.0-0.001)):
                 y = (1.0-0.001)
+            chi2 = (y - mu[ii]) / sigma[ii]
+            gaus -= 0.5 * chi2 * chi2
             jacobian += -log(4.0 * sqrt((1.0 - y)*y));
         result += jacobian
         return result;

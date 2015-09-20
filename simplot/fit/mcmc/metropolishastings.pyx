@@ -1,5 +1,9 @@
+# cython: profile=True
+
 import numpy as np
 cimport numpy as np
+
+from libc.math cimport exp
 
 ################################################################################
 
@@ -42,6 +46,7 @@ cdef class MetropolisHastingsAlgorithm(object):
     def generate(self):
         theta0 = self._theta
         random = self._random
+        cdef double pt, jt, pt0, jt0, r, prob, likelihood;
         while True:
             thetaProposal = self._proposal.generate(theta0)
             if self._check_range(thetaProposal):
@@ -50,7 +55,9 @@ cdef class MetropolisHastingsAlgorithm(object):
                 pt0 = self._function(theta0)
                 jt0 = self._proposal.logDensity(theta0, thetaProposal)
                 r = pt - jt - pt0 + jt0
-                prob = min(np.exp(r), 1.0)
+                prob = exp(r)
+                if prob > 1.0:
+                    prob = 1.0
                 if random.uniform() < prob:
                     thetaNext = np.copy(thetaProposal)
                     likelihood = pt

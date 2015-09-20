@@ -26,7 +26,7 @@ class TestMcMc(unittest.TestCase):
         self.check_result(mc, mu, sigma)
         return
 
-    def check_result(self, toymc, mu, sigma, expectedcov=None, npe=10**5, burnin=1000):
+    def check_result(self, toymc, mu, sigma, expectedcov=None, npe=10**6, burnin=1000):
         if expectedcov is None:
             expectedcov = np.diag(np.power(sigma, 2.0))
         mean = Mean()
@@ -55,8 +55,12 @@ class TestMcMc(unittest.TestCase):
         return 
 
 def main():
-    unittest.main()
+    #unittest.main()
+    test = TestMcMc("test_gaussian")
+    test.setUp()
+    test.test_gaussian()
     return
 
 if __name__ == "__main__":
-    main()
+    from simplot.profile import profile_func
+    profile_func(main)
