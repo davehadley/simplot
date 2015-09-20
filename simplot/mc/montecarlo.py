@@ -1,6 +1,10 @@
 import StringIO
+import time
+import datetime
 
 import numpy as np
+
+from simplot.progress import printprogress
 
 ################################################################################
 
@@ -77,7 +81,7 @@ class ToyMC:
 
 ################################################################################
 
-def generate_timed(self, toymc, maxseconds, maxevents=None, name=None):
+def generate_timed(toymc, maxseconds, maxevents=None, name=None):
         start = time.time()
         end = start + maxseconds
         count = 0
@@ -94,11 +98,11 @@ def generate_timed(self, toymc, maxseconds, maxevents=None, name=None):
 
 ################################################################################
 
-def generate_events(self, toymc, n, name=None):
+def generate_events(toymc, n, name=None):
         if name is None:
             iterN = xrange(n)
         else:
-            iterN = progress.printprogress(name, n, xrange(n))
+            iterN = printprogress(name, n, xrange(n))
         for i in iterN:
             yield toymc()
         return

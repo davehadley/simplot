@@ -13,6 +13,7 @@ class McMcSetupError(Exception):
 ################################################################################
 
 cdef class MetropolisHastingsAlgorithm(object):
+    cdef list _parameter_names
     cdef np.ndarray _start
     cdef np.ndarray _low
     cdef np.ndarray _high
@@ -25,7 +26,8 @@ cdef class MetropolisHastingsAlgorithm(object):
     cdef object _proposal
     cdef object _random
     cdef double _likelihood
-    def __init__(self, function, proposal, start, parameter_range, seed=None):
+    def __init__(self, parameter_names, function, proposal, start, parameter_range, seed=None):
+        self._parameter_names = parameter_names
         self._start = np.array(start)
         self._low = np.array([x[0] for x in parameter_range])
         self._high = np.array([x[1] for x in parameter_range])
@@ -39,6 +41,10 @@ cdef class MetropolisHastingsAlgorithm(object):
         #compute the intial likelihood values
         self._likelihood = self._function(self._theta) 
         return
+
+    @property
+    def parameter_names(self):
+        return self._parameter_names
 
     def __call__(self):
         return self.generate()

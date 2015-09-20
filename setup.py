@@ -63,6 +63,11 @@ modules = [Extension("simplot.rootplot.cmerge",
                      language = language,
                      extra_compile_args=extra_compile_args,
                      extra_link_args=extra_link_args),
+           Extension("simplot.fit.mcmc.io",
+                     ["simplot/fit/mcmc/io.pyx"],
+                     language = language,
+                     extra_compile_args=extra_compile_args,
+                     extra_link_args=extra_link_args),
 ]
 
 setup(name="simplot",
