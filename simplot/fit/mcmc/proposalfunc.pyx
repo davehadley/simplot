@@ -16,9 +16,9 @@ from libc.math cimport sin, sqrt, log, M_PI, asin
 
 _RANDOM = np.random.RandomState(231321)
 
-cdef _gaus_generate(np.ndarray[float, ndim=1] result, np.ndarray[float, ndim=1] mu, np.ndarray[float, ndim=1] sigma):
+cdef _gaus_generate(np.ndarray[double, ndim=1] result, np.ndarray[double, ndim=1] mu, np.ndarray[double, ndim=1] sigma):
     cdef int N = len(result)
-    cdef np.ndarray[float, ndim=1] normal = _RANDOM.normal(size=N);
+    cdef np.ndarray[double, ndim=1] normal = _RANDOM.normal(size=N);
     cdef int ii
     for ii in xrange(N):
         result[ii] = mu[ii] + sigma[ii] * normal[ii]
@@ -56,7 +56,7 @@ cdef _sintheta(x):
 
 cdef _sinthetagaussian_generate_i(result, mu, sigma):
     cdef int N = len(result)
-    cdef np.ndarray[float, ndim=1] normal = _RANDOM.normal(size=N);
+    cdef np.ndarray[double, ndim=1] normal = _RANDOM.normal(size=N);
     cdef int ii
     for ii in xrange(N):
         result[ii] = mu[ii] + sigma[ii] * normal[ii]
@@ -80,40 +80,14 @@ cdef _sinthetagaussian_generate_i(result, mu, sigma):
 ###############################################################################
 
 class GaussianProposalFunction(object):
-    def __init__(self, parameterRanges, stepSize=0.4, sigma=None):
-        '''By default the step-size will stepSize*parameterRange.
-           Alternatively, a specific sigma can be specified witht he sigma argument.
-        
-        parameterRanges a list of tuples with min and max values for each parameter.
-        priorSigma a list containing the force sigma values for each parameter.
-        '''
-        self.parameterRanges = parameterRanges
-        self.nParameters = len(parameterRanges)
-        self.parNList = list(range(self.nParameters))
-        if sigma is None:
-            sigma = [None] * self.nParameters
-        self.stepSize = stepSize
-        self._result = np.zeros(self.nParameters)
-        self.sigma = self._calcWidthParameters(sigma, parameterRanges)
+    def __init__(self, sigma):
+        self.sigma = np.array(sigma, dtype=float)
+        self._result = np.zeros(len(self.sigma))
         self._sanityCheckState()
-        
 
     def _sanityCheckState(self):
-        if not len(self.sigma) == self.nParameters:
-            raise McMcSetupError("sigma list must have an entry for each parameter", self.infoString())
         if not np.all(np.isfinite(self.sigma)):
             raise McMcSetupError("sigma list contains NaN", self.infoString())
-        
-    
-    
-    def _calcWidthParameters(self, sigma, parameterRanges):
-        #automatically calculate width parameters
-        for i,(vMin,vMax) in enumerate(parameterRanges):
-            if sigma[i] is None:
-                s = self.stepSize*(vMax-vMin)
-                sigma[i] = s
-        sigma = np.array(sigma, dtype=float)
-        return sigma
     
     def generate(self, parameters):
         x = self._result
@@ -122,15 +96,6 @@ class GaussianProposalFunction(object):
     
     def logDensity(self, x, p):
         return gaus_log_density(x, p, self.sigma)
-    
-    def infoString(self):
-        sio = StringIO.StringIO()
-        print >>sio, "GaussianProposalFunction(npars={}, stepsize={}".format(len(self.parameterRanges),
-                                                                                 self.stepSize
-                                                                            )
-        for i,(sigma, parrange) in enumerate(zip(self.sigma, self.parameterRanges)):
-            print >>sio, "    {} : sigma={}, low={}, high={}".format(i, sigma, parrange[0], parrange[1])
-        return sio.getvalue()
 
 ###############################################################################
 

@@ -18,6 +18,9 @@ cdef class MetropolisHastingsAlgorithm(object):
     cdef _success
     cdef int _num_parameters
     cdef object random
+    cdef object _proposal
+    cdef object _random
+    cdef double _likelihood
     def __init__(self, function, proposal, start, parameter_range, seed=None):
         self._start = np.array(start)
         self._low = np.array([x[0] for x in parameter_range])
@@ -61,10 +64,10 @@ cdef class MetropolisHastingsAlgorithm(object):
                 break
         return self._theta, self._likelihood
 
-    cdef _check_range(self, np.ndarray[dtype=float, ndim=1] proposal):
+    cdef _check_range(self, np.ndarray[dtype=double, ndim=1] proposal):
         cdef int N = self._num_parameters
-        cdef np.ndarray[dtype=float, ndim=1] low = self._low
-        cdef np.ndarray[dtype=float, ndim=1] high = self._high
+        cdef np.ndarray[dtype=double, ndim=1] low = self._low
+        cdef np.ndarray[dtype=double, ndim=1] high = self._high
         for ii in xrange(N):
             if not (low[ii] < proposal[ii] < high[ii]):
                 return False
