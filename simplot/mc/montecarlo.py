@@ -74,3 +74,31 @@ class ToyMC:
     
     def __str__(self):
         return self._infostring()
+
+################################################################################
+
+def generate_timed(self, toymc, maxseconds, maxevents=None, name=None):
+        start = time.time()
+        end = start + maxseconds
+        count = 0
+        if name is not None:
+            fmt = "%Y-%m-%d %H:%M:%S"
+            startstr = datetime.datetime.fromtimestamp(start).strftime(fmt)
+            endstr = datetime.datetime.fromtimestamp(end).strftime(fmt)
+            print name + " start =", startstr, " expected end =", endstr
+        while time.time() < end:
+            yield toymc()
+            if maxevents is not None and count > maxevents:
+                break
+        return
+
+################################################################################
+
+def generate_events(self, toymc, n, name=None):
+        if name is None:
+            iterN = xrange(n)
+        else:
+            iterN = progress.printprogress(name, n, xrange(n))
+        for i in iterN:
+            yield toymc()
+        return
