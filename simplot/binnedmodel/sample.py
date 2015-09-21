@@ -140,7 +140,6 @@ class CombinedBinnedSample(Sample):
     def eval_subsample(self, pars, samplenum):
         return self._samples[samplenum](self._get_args(pars, samplenum))
 
-
     def __call__(self, x):
         if len(x) != len(self.parameter_names):
             raise ValueError("Sample called with wrong number of parameters")
@@ -165,6 +164,10 @@ class CombinedBinnedSample(Sample):
             m = np.array([parameter_names.index(p) for p in s.parameter_names], dtype=int)
             mapping.append(m)
         return parameter_names, mapping
+
+    @property
+    def samples(self):
+        return self._samples
 
 ################################################################################
 

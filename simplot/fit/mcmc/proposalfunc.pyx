@@ -10,6 +10,7 @@ from simplot.fit.hesse import Hesse
 from simplot.fit.hesse import Verbosity as HesseVerbosity
 from simplot.fit.mcmc.metropolishastings import McMcSetupError
 from simplot.mc.likelihood import MultiVariateGaussianLikelihood
+from simplot.mc.generators import MultiVariateGaussianGenerator
 
 from simplot.mc.clikelihood import gaus_log_density
 
@@ -280,48 +281,17 @@ class _MultiVariateGaussianLikelihoodWrapper(MultiVariateGaussianLikelihood):
 class MultiVariateGaussianProposal(object):
     def __init__(self, mu, cov, startindex=0):
         cov = np.copy(cov)
-        self._npars = cov.GetNrows()
-        self._numcov = self._convertmatrix_roottoarray(cov)
         self._startindex = startindex
-        self._endindex = cov.GetNrows() + startindex
-        self._gen = self._iterrandom(cov)
-        self._invcov = cov.Clone().Invert()
+        self._stopindex = startindex + len(mu)
         self._lhd = _MultiVariateGaussianLikelihoodWrapper(mu, cov)
-        try:
-            iter(mu)
-        except TypeError:
-            #not iterable, use same value for all rows
-            self._mu = np.array([mu]*cov.GetNrows(), dtype=float)
-        else:
-            self._mu = np.array(mu)
-        self._zeroes = np.zeros(cov.GetNrows(), dtype=float)
-
-    def _iterrandom(self, cov):
-            while True:
-                #for speed, generate many events at a time
-                size = 10000
-                #convert cov to np format
-                val = np.random.multivariate_normal(self._zeroes, self._numcov, size)
-                for i in xrange(size):
-                    yield val[i]
+        parameter_names = ["par_"+str(i) for i in xrange(len(mu))]
+        self._gen = MultiVariateGaussianGenerator(parameter_names, mu=[0.0]*len(mu), cov=cov)
 
     def logDensity(self, xvec, mu):
         return self._lhd(xvec, mu)
 
     def generate(self, parameters):
-        vec = self._gen.next()
-        return vec + parameters
-
-
-    def infoString(self):
-        sio = StringIO.StringIO()
-        print >>sio, "MultiVariateGaussianProposalFunction(npars={})".format(self._npars),
-        for i in xrange(self._npars):
-            sigma = math.sqrt(abs(self._numcov[i][i]))
-            mu = math.sqrt(abs(self._mu[i]))
-            print >>sio, "    {} : mu={}, sigma={}".format(i, mu, sigma)
-        print >>sio, self._numcov
-        return sio.getvalue()
+        return self._gen() + parameters[self._startindex:self._stopindex]
 
 ###############################################################################
 
@@ -474,11 +444,24 @@ class ProposalWithSomeParametersFixed(object):
 
 ###############################################################################
 
-class SimpleAdaptiveMultiVariateGaussianProposal(MultiVariateGaussianProposal):
-    def __init__(self, *args, **kwargs):
-        super(SimpleAdaptiveMultiVariateGaussianProposal, self).__init__(*args, **kwargs)
+class SimpleAdaptiveMultiVariateGaussianProposal(object):
+    def __init__(self, mu, cov, startindex=0):
+        self._mu = mu
+        self._cov = cov
+        self._startindex = startindex
+        self._update()
         self._converged = False
         self._total_scale = 1.0
+
+    def _update(self):
+        self._gen = MultiVariateGaussianProposal(self._mu, self._cov, self._startindex)
+        return
+
+    def generate(self, parameters):
+        return self._gen.generate(parameters)
+
+    def logDensity(self, x, p):
+        return self._gen.logDensity(x, p)
 
     def adapt(self, eff, data=None):
         print "SimpleAdaptiveMultiVariateGaussianProposal eff=%.2f, scale=%.2f" % (eff, self._total_scale)
@@ -487,19 +470,12 @@ class SimpleAdaptiveMultiVariateGaussianProposal(MultiVariateGaussianProposal):
                 self._converged = True
                 print "SimpleAdaptiveMultiVariateGaussianProposal CONVERGED eff=%.2f, scale=%.2f" % (eff, self._total_scale)
             else:
-                cov = self._numcov
+                cov = self._cov
                 scale = 1.0 + 2.0*(eff - 0.4)
                 self._total_scale *= scale
                 cov *= scale
-                # if eff < 0.2:
-                #     #efficiency is low, decrease covariance size
-                #     cov *= scale
-                # elif eff > 0.5:
-                #     #efficiency is high, increase covariance size
-                #     cov *= 1.1
-                self._numcov = cov
-                #update generator
-                self._gen = self._iterrandom(cov)
+                self._cov = cov
+                self._update()
         return self._converged
 
 ###############################################################################

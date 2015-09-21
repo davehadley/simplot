@@ -94,13 +94,17 @@ cdef class MetropolisHastingsAlgorithm(object):
 
 ################################################################################
 
-class AdaptiveMetropolisHastingsAlgorithm(MetropolisHastingsAlgorithm):
+cdef class AdaptiveMetropolisHastingsAlgorithm(MetropolisHastingsAlgorithm):
+    cdef int _period
+    cdef int _converged
+    cdef int _save_all
+    cdef np.ndarray _data
     def __init__(self, *args, **kwargs):
         self._period = 10000
         self._converged = False
         self._save_all = False
-        self._data = np.zeros(shape=(self._period, len(args[2])))
         super(AdaptiveMetropolisHastingsAlgorithm, self).__init__(*args, **kwargs)
+        self._data = np.zeros(shape=(self._period, len(self._parameter_names)))
 
     def generate(self):
         if self._save_all:
