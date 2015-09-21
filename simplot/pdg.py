@@ -62,8 +62,8 @@ class PdgNeutrinoOscillationParameters(object):
                         cls.SINSQ2THETA23: sinsq_2theta23_errors,
                         cls.SINSQ2THETA13: sinsq_2theta13_errors,
                         cls.DELTACP: 0.0,
-                        cls.LDM: ldm,
-                        cls.SDM: sdm,
+                        cls.LDM: delta_msq32_errors,
+                        cls.SDM: delta_msq12_errors,
         }
 
     def value(self, par):
