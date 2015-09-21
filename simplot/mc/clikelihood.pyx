@@ -1,6 +1,8 @@
 import numpy as np
 cimport numpy as np
+cimport cython
 
+from libc.math cimport log
 
 def gaus_log_density(np.ndarray[double, ndim=1] x, np.ndarray[double, ndim=1] mu, np.ndarray[double, ndim=1] sigma):
     cdef int N = len(mu)
@@ -17,9 +19,14 @@ def gaus_log_density(np.ndarray[double, ndim=1] x, np.ndarray[double, ndim=1] mu
     return result
 
 def poisson_log_density(np.ndarray[double, ndim=1] observed, np.ndarray[double, ndim=1] expected):
-    cdef int N = len(observed)
+    return _poisson_log_density(observed, expected)
+
+@cython.boundscheck(False)
+cdef _poisson_log_density(np.ndarray[double, ndim=1] observed, np.ndarray[double, ndim=1] expected):
+    cdef int N = observed.shape[0]
     cdef double result = 0
-    cdef double l
+    cdef double l, n, e
+    cdef int i
     for i in xrange(N):
         n = observed[i]
         e = expected[i]
@@ -33,12 +40,12 @@ def poisson_log_density(np.ndarray[double, ndim=1] observed, np.ndarray[double, 
 cdef double safelog(double x):
     cdef double result = 1e10;
     if x > 1e-6:
-        result = np.log(x);
+        result = log(x);
     return result;
 
 cdef double safenegativelog(double x):
     cdef double result = 1e10;
     if x > 1e-6:
-        result = -1.0*np.log(x);
+        result = -1.0*log(x);
     return result;
 
