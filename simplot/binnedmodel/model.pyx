@@ -230,7 +230,7 @@ class ConcatenateObservableRateVector:
 cdef class ProbabilityCache:
     cdef np.ndarray _enuarray
     cdef _prob
-    cdef _detdist
+    cdef np.ndarray _detdist
     cdef public np.ndarray array;
     cdef uint64_t _theta12;
     cdef uint64_t _theta23;
@@ -245,7 +245,22 @@ cdef class ProbabilityCache:
     cdef double _previous_deltacp;
     cdef double _previous_sdm;
     cdef double _previous_ldm;
+
+    cdef np.ndarray _flav_map
+
     def __init__(self, parnames, enubinning, detdist, probabilitycalc=None):
+        self._flav_map = np.array([#appearance
+                                                              (0, 0, 2, 2, 1),
+                                                              (1, 1, 1, 1, 1),
+                                                              (2, 2, 2, 2, -1),
+                                                              (3, 3, 1, 1, -1),
+                                                              #disappearance
+                                                              (0, 1, 2, 1, 1),
+                                                              (1, 0, 1, 2, 1),
+                                                              (2, 3, 2, 1, -1),
+                                                              (3, 2, 1, 2, -1),
+                                                              
+            ], dtype=np.intc)
         self._previous_theta12 = 0.0
         self._previous_theta23 = 0.0
         self._previous_theta13 = 0.0
@@ -258,7 +273,7 @@ cdef class ProbabilityCache:
         self._prob = probabilitycalc #crootglobes.Probability()
         enubinning = np.array(enubinning)
         self._enuarray = (enubinning[1:] + enubinning[:-1])/2.0
-        self._detdist = detdist
+        self._detdist = np.array(detdist, dtype=np.intc)
         enudim = len(enubinning) - 1
         detdim = len(detdist)
         self.array = np.ones(shape=(enudim, detdim, 4, 4), dtype=float)
@@ -314,29 +329,54 @@ cdef class ProbabilityCache:
         self._previous_sdm = sdm
         return not allsame
 
-    def update(self, pars):
+    def update(self, np.ndarray[double, ndim=1] pars):
         if self._prob and self._haschanged(pars):
             self._prob.setAll(pars[self._theta12], pars[self._theta23], pars[self._theta13], pars[self._deltacp], pars[self._sdm], pars[self._ldm])
             self._prob.update()
-            for detbin, detdist in enumerate(self._detdist):
-                if detdist == 0:
-                    continue
-                self._prob.setBaseline(detdist)
-                for flav_i, flav_j, flav_init, flav_final, cp in [#appearance
-                                                              (0, 0, 2, 2, 1),
-                                                              (1, 1, 1, 1, 1),
-                                                              (2, 2, 2, 2, -1),
-                                                              (3, 3, 1, 1, -1),
-                                                              #disappearance
-                                                              (0, 1, 2, 1, 1),
-                                                              (1, 0, 1, 2, 1),
-                                                              (2, 3, 2, 1, -1),
-                                                              (3, 2, 1, 2, -1),
-                                                              
-                ]:
-                    for enubin, enu in enumerate(self._enuarray):
-                        p = self._prob.getVacuumProbability(flav_init, flav_final, enu, cp)
-                        self.array[enubin][detbin][flav_i][flav_j] = p
+            self._fillcache()
+
+    cdef _fillcache(self):
+        #get inputs
+        prob = self._prob
+        cdef np.ndarray[double, ndim=1] enuarray = self._enuarray;
+        cdef np.ndarray[double, ndim=4] array = self.array;
+        cdef np.ndarray[int, ndim=2] flavmap = self._flav_map;
+        cdef np.ndarray[int, ndim=1] detdistarray = self._detdist;
+        #temporary variables
+        cdef int detbin, detdist, enubin;
+        cdef int flav_i, flav_j, flav_init, flav_final, cp;
+        cdef double enu, p;
+        #iterate over detector bins
+        for detbin in xrange(detdistarray.shape[0]):
+            detdist = detdistarray[detbin]
+            if detdist == 0:
+                continue
+            #update baseline
+            prob.setBaseline(detdist)
+            #for flav_i, flav_j, flav_init, flav_final, cp in [#appearance
+            #                                                  (0, 0, 2, 2, 1),
+            #                                                  (1, 1, 1, 1, 1),
+            #                                                  (2, 2, 2, 2, -1),
+            #                                                  (3, 3, 1, 1, -1),
+            #                                                  #disappearance
+            #                                                  (0, 1, 2, 1, 1),
+            #                                                  (1, 0, 1, 2, 1),
+            #                                                  (2, 3, 2, 1, -1),
+            #                                                  (3, 2, 1, 2, -1),
+            #                                                  
+            #]:
+            for flavrow in xrange(flavmap.shape[0]):
+                flav_i = flavmap[flavrow, 0]
+                flav_j = flavmap[flavrow, 1]
+                flav_init = flavmap[flavrow, 2]
+                flav_final = flavmap[flavrow, 3]
+                cp = flavmap[flavrow, 4]
+                #iterate over enubins
+                for enubin in xrange(enuarray.shape[0]):
+                    enu = enuarray[enubin]
+                    p = prob.getVacuumProbability(flav_init, flav_final, enu, cp)
+                    #array[enubin][detbin][flav_i][flav_j] = p
+                    array[enubin,detbin,flav_i,flav_j] = p
         return
 
 ################################################################################
