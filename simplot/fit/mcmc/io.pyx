@@ -4,25 +4,27 @@ import numpy as np
 cimport numpy as np
 import ROOT
 
-def write_mc_to_root_file(mc, filename, treename, nevents, seconds=None, burnin=None):
-    out = _RootOutput(mc, filename, treename)
+def write_mc_to_root_file(mc, filename, treename, nevents, seconds=None, burnin=None, parameter_names=None):
+    out = _RootOutput(mc, filename, treename, parameter_names=parameter_names)
     if burnin is None:
         burnin  = 0
     out.write(nevents, seconds=seconds, burnin=burnin)
     return
 
 cdef class _RootOutput:
+    cdef list _parameter_names
     cdef object _mc
     cdef str _filename
     cdef str _treename
     cdef list _arrays
     cdef np.ndarray _likelihood
 
-    def __init__(self, mc, filename, treename="mc"):
+    def __init__(self, mc, filename, treename="mc", parameter_names=None):
         self._mc = mc
         self._arrays = []
         self._filename = filename
         self._treename = treename
+        self._parameter_names = parameter_names
 
     def _setup_output_file(self):
         tfile = ROOT.TFile(self._filename, "RECREATE")
@@ -36,7 +38,8 @@ cdef class _RootOutput:
         self._likelihood = arr
         for parname in self._mc.parameter_names:
             arr = np.zeros(dtype=float, shape=(1,))
-            tree.Branch(parname, arr, parname + "/D")
+            if self._parameter_names is None or parname in self._parameter_names:
+                tree.Branch(parname, arr, parname + "/D")
             self._arrays.append(arr)
         return
 

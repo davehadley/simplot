@@ -1,4 +1,4 @@
-# cython: profile=True
+# cython: profile=False
 
 #from sparsehist import SparseArray
 from simplot.sparsehist.sparsehist cimport SparseArray
