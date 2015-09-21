@@ -136,22 +136,23 @@ class SimpleModel(Sample):
 ################################################################################
 
 class SimpleMcWithOscillationBuilder(SimpleMcBuilder):
-    def build(self, name, toymc, sample, cache_name=None, npe=1000):
+    def build(self, name, toymc, sample, cache_name=None, npe=1000, probabilitycalc=None):
         self.name = name
         oscpars = toymc.generator.parameter_names[:6]
         cov, mean = self._generate_covariance_with_cache(toymc=toymc, keep=oscpars, npe=npe, cache_name=cache_name)
         generator = self._buildgenerator(toymc, oscpars, cov)
-        ratevector = self._buildratevector(oscpars, toymc, sample)
+        ratevector = self._buildratevector(oscpars, toymc, sample, probabilitycalc=probabilitycalc)
         toymc = ToyMC(ratevector, generator)
         return toymc, cov
 
         
-    def _buildratevector(self, oscpars, toymc, sample, binoffset=0):
+    def _buildratevector(self, oscpars, toymc, sample, binoffset=0, probabilitycalc=None):
         N_sel, N_nosel, observables, enubinning, dim_enu, dim_nupdg, detdist = self._determine_properties(sample)
         N_sel = self._transform_array(N_sel, observables, enubinning, dim_enu, dim_nupdg)
         N_nosel = self._transform_array(N_nosel, observables, enubinning, dim_enu, dim_nupdg)
         parnames = oscpars + [_PAR_BIN_FORMAT % (ii+binoffset) for ii in xrange(N_sel.shape[2])]
-        probabilitycalc = ROOT.crootprob3pp.Probability()
+        if probabilitycalc is None:
+            probabilitycalc = ROOT.crootprob3pp.Probability()
         ratevector = SimpleBinnedModelWithOscillation(parnames, N_sel, N_nosel, enubinning, detdist, probabilitycalc=probabilitycalc)
         return ratevector
 
@@ -181,28 +182,28 @@ class SimpleMcWithOscillationBuilder(SimpleMcBuilder):
 
 class SimpleCombinedMcWithOscillationBuilder(SimpleMcWithOscillationBuilder):
 
-    def build(self, name, toymc, sample, cache_name=None, npe=1000):
+    def build(self, name, toymc, sample, cache_name=None, npe=1000, probabilitycalc=None):
         self.name = name
         oscpars = toymc.generator.parameter_names[:6]
         cov, mean = self._generate_covariance_with_cache(toymc=toymc, keep=oscpars, npe=npe, cache_name=cache_name)
         generator = self._buildgenerator(toymc, oscpars, cov)
-        ratevector = self._buildratevector(oscpars, toymc, sample, generator)
+        ratevector = self._buildratevector(oscpars, toymc, sample, generator, probabilitycalc=probabilitycalc)
         toymc = ToyMC(ratevector, generator)
         return toymc, cov
         
-    def _buildratevector(self, oscpars, toymc, samples, generator):
+    def _buildratevector(self, oscpars, toymc, samples, generator, probabilitycalc=None):
         converted = []
         binoffset = 0
         for s in samples:
-            s = self._convert_sample(oscpars, toymc, s, binoffset=binoffset)
+            s = self._convert_sample(oscpars, toymc, s, binoffset=binoffset, probabilitycalc=probabilitycalc)
             binoffset += len(s.parameter_names)
             converted.append(s)
         return CombinedBinnedSample(converted, generator.parameter_names)
 
-    def _convert_sample(self, oscpars, toymc, sample, binoffset):
+    def _convert_sample(self, oscpars, toymc, sample, binoffset, probabilitycalc=None):
         result = None
         if isinstance(sample, BinnedSampleWithOscillation):
-            result = SimpleMcWithOscillationBuilder._buildratevector(self, oscpars, toymc, sample, binoffset=binoffset)
+            result = SimpleMcWithOscillationBuilder._buildratevector(self, oscpars, toymc, sample, binoffset=binoffset, probabilitycalc=probabilitycalc)
         elif isinstance(sample, BinnedSample):
             #determine nominal value for this object
             asimovpars = toymc.asimov().pars
