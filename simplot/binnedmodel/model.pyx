@@ -238,7 +238,20 @@ cdef class ProbabilityCache:
     cdef uint64_t _deltacp;
     cdef uint64_t _sdm;
     cdef uint64_t _ldm;
+
+    cdef double _previous_theta12;
+    cdef double _previous_theta23;
+    cdef double _previous_theta13;
+    cdef double _previous_deltacp;
+    cdef double _previous_sdm;
+    cdef double _previous_ldm;
     def __init__(self, parnames, enubinning, detdist, probabilitycalc=None):
+        self._previous_theta12 = 0.0
+        self._previous_theta23 = 0.0
+        self._previous_theta13 = 0.0
+        self._previous_deltacp = 0.0
+        self._previous_sdm = 0.0
+        self._previous_ldm = 0.0
         if probabilitycalc is None and any([d>0 for d in detdist]):
             raise Exception("invalid probability calculator", probabilitycalc, detdist)
         self._parse_parameter_names(parnames)
@@ -279,10 +292,30 @@ cdef class ProbabilityCache:
             raise Exception("ProbabilityCache cannot find all oscillation parameters", parnames)
         self._theta12, self._theta23, self._theta13, self._deltacp, self._sdm, self._ldm = theta12, theta23, theta13, deltacp, sdm, ldm
         return
-        
+
+    cdef _haschanged(self, np.ndarray[double, ndim=1] pars):
+        cdef double theta12 = pars[self._theta12]
+        cdef double theta23 = pars[self._theta23]
+        cdef double theta13 = pars[self._theta13]
+        cdef double deltacp = pars[self._deltacp]
+        cdef double sdm = pars[self._sdm]
+        cdef double ldm = pars[self._ldm]
+        cdef int allsame = (theta12 == self._previous_theta12) \
+                          and (theta23 == self._previous_theta23) \
+                          and (theta13 == self._previous_theta13) \
+                          and (deltacp == self._previous_deltacp) \
+                          and (ldm == self._previous_ldm) \
+                          and (sdm == self._previous_sdm)
+        self._previous_theta12 = theta12
+        self._previous_theta13 = theta13
+        self._previous_theta23 = theta23
+        self._previous_deltacp = deltacp
+        self._previous_ldm = ldm
+        self._previous_sdm = sdm
+        return not allsame
 
     def update(self, pars):
-        if self._prob:
+        if self._prob and self._haschanged(pars):
             self._prob.setAll(pars[self._theta12], pars[self._theta23], pars[self._theta13], pars[self._deltacp], pars[self._sdm], pars[self._ldm])
             self._prob.update()
             for detbin, detdist in enumerate(self._detdist):
