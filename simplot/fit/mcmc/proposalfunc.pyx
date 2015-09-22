@@ -511,3 +511,31 @@ class AdaptiveMultiVariateGaussianProposal(MultiVariateGaussianProposal):
     def _calccov(self, data):
         cov = np.cov(data.T)
         return cov
+
+class ProposalWithSomeParametersFixed(object):
+    def __init__(self, proposalfunc, fixedvalues):
+        self._fixedvalues = fixedvalues
+        self._proposalfunc = proposalfunc
+
+    def logDensity(self, x, p):
+        x = np.copy(x)
+        p = np.copy(p)
+        if not len(x) == len(self._fixedvalues):
+            raise Exception("ProposalWithSomeParametersFixed mismatched number of parameters.", len(x), len(self._fixedvalues))
+        for index, val in enumerate(self._fixedvalues):
+            if val is not None:
+                x[index] = val
+                p[index] = val
+        return self._proposalfunc.logDensity(x, p)
+
+    def generate(self, parameters):
+        result = self._proposalfunc.generate(parameters)
+        if not len(result) == len(self._fixedvalues):
+            raise Exception("ProposalWithSomeParametersFixed mismatched number of parameters.", len(result), len(self._fixedvalues))
+        for index, val in enumerate(self._fixedvalues):
+            if val is not None:
+                result[index] = val
+        return result
+
+    def adapt(self, eff, data=None):
+        return self._proposalfunc.adapt(eff, data)
