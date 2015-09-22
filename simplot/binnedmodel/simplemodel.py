@@ -19,7 +19,7 @@ _PAR_BIN_FORMAT = "bin%02.0f"
 
 class SimpleMcBuilder(object):
 
-    def build(self, name, toymc, keep=None, cache_name=None, npe=1000):
+    def build(self, name, toymc, keep=None, cache_name=None, npe=1000, fixed=None):
         self.name = name
         try:
             #assume keep is dict(parnames, splinepoints)
@@ -30,16 +30,16 @@ class SimpleMcBuilder(object):
         except AttributeError:
             #assume keep is list(parnames)
             spline_points = None
-        cov, mean = self._generate_covariance_with_cache(toymc=toymc, keep=keep, npe=npe, cache_name=cache_name)
+        cov, mean = self._generate_covariance_with_cache(toymc=toymc, keep=keep, npe=npe, cache_name=cache_name, fixed=fixed)
         splines = self._generate_splines_with_cache(toymc=toymc, nominal=toymc.asimov().vec, keep=keep, spline_points=spline_points, cache_name=cache_name)
         ratevector = self._buildratevector(mean, splines)
         generator = self._buildgenerator(toymc, keep, cov)
         toymc = ToyMC(ratevector, generator)
         return toymc, cov
 
-    def _generate_covariance_with_cache(self, toymc, keep, npe=1000, cache_name=None):    
+    def _generate_covariance_with_cache(self, toymc, keep, npe=1000, cache_name=None, fixed=None):    
         def func(self=self, toymc=toymc, keep=keep):
-            return self._generate_covariance(toymc, keep, npe=npe)
+            return self._generate_covariance(toymc, keep, npe=npe, fixed=fixed)
         if cache_name is not None:
             cov = cache("SimpleMcBuilderCovariance_" + cache_name, func)
         else:
@@ -79,12 +79,16 @@ class SimpleMcBuilder(object):
             spline_points[par] = [float(ii)*sigma for ii in xrange(-5, 6)]
         return spline_points
 
-    def _generate_covariance(self, toymc, keep, npe=1000):
+    def _generate_covariance(self, toymc, keep, npe=1000, fixed=None):
         cov = Covariance(fractional=True)
         mean = Mean()
         generator = toymc.generator
-        if keep is not None:
+        if keep is not None and fixed is not None:
+            generator.setfixed(set(keep) + set(fixed))
+        elif keep is not None:
             generator.setfixed(set(keep))
+        elif fixed is not None:
+            generator.setfixed(set(fixed))
         name = "generate covariance matrix for " + str(self.name)
         calculate_statistics_from_toymc(toymc, [cov, mean], npe=npe, name=name)
         if keep is not None:
@@ -136,10 +140,10 @@ class SimpleModel(Sample):
 ################################################################################
 
 class SimpleMcWithOscillationBuilder(SimpleMcBuilder):
-    def build(self, name, toymc, sample, cache_name=None, npe=1000, probabilitycalc=None):
+    def build(self, name, toymc, sample, cache_name=None, npe=1000, probabilitycalc=None, fixed=None):
         self.name = name
         oscpars = toymc.generator.parameter_names[:6]
-        cov, mean = self._generate_covariance_with_cache(toymc=toymc, keep=oscpars, npe=npe, cache_name=cache_name)
+        cov, mean = self._generate_covariance_with_cache(toymc=toymc, keep=oscpars, npe=npe, cache_name=cache_name, fixed=fixed)
         generator = self._buildgenerator(toymc, oscpars, cov)
         ratevector = self._buildratevector(oscpars, toymc, sample, probabilitycalc=probabilitycalc)
         toymc = ToyMC(ratevector, generator)
@@ -182,10 +186,10 @@ class SimpleMcWithOscillationBuilder(SimpleMcBuilder):
 
 class SimpleCombinedMcWithOscillationBuilder(SimpleMcWithOscillationBuilder):
 
-    def build(self, name, toymc, sample, cache_name=None, npe=1000, probabilitycalc=None):
+    def build(self, name, toymc, sample, cache_name=None, npe=1000, probabilitycalc=None, fixed=None):
         self.name = name
         oscpars = toymc.generator.parameter_names[:6]
-        cov, mean = self._generate_covariance_with_cache(toymc=toymc, keep=oscpars, npe=npe, cache_name=cache_name)
+        cov, mean = self._generate_covariance_with_cache(toymc=toymc, keep=oscpars, npe=npe, cache_name=cache_name, fixed=fixed)
         generator = self._buildgenerator(toymc, oscpars, cov)
         ratevector = self._buildratevector(oscpars, toymc, sample, generator, probabilitycalc=probabilitycalc)
         toymc = ToyMC(ratevector, generator)
