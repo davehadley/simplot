@@ -89,7 +89,7 @@ class FluxSystematics(Systematics):
                      self._dim_beammode,
                      parametermap=self._fluxparametermap,
         )
-        return
+        return fw
 
     @classmethod
     def make_flux_parameter_map(cls, enubinning, flux_error_binning, name_pattern=None):
