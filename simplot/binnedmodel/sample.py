@@ -57,6 +57,9 @@ class BinnedSample(Sample):
             raise ValueError("Sample called with wrong number of parameters")
         return self._model.observable(x).flatten()
 
+    def array(self, x):
+        return self._model(x)
+
     def _loaddata(self, data, systematics):
         hist = SparseHistogram(self.binedges)
         if systematics:
@@ -137,8 +140,14 @@ class CombinedBinnedSample(Sample):
         self._par_map = mapping
         super(CombinedBinnedSample, self).__init__(parameter_names)
 
-    def eval_subsample(self, pars, samplenum):
+    def sample_parameters(self, pars, samplenum):
+        return self._get_args(pars, samplenum)
+
+    def eval_sample(self, pars, samplenum):
         return self._samples[samplenum](self._get_args(pars, samplenum))
+
+    def array_sample(self, pars, samplenum):
+        return self._samples[samplenum].array(self._get_args(pars, samplenum))
 
     def __call__(self, x):
         if len(x) != len(self.parameter_names):
