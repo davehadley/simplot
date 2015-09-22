@@ -82,7 +82,7 @@ cdef class MetropolisHastingsAlgorithm(object):
         cdef np.ndarray[dtype=double, ndim=1] low = self._low
         cdef np.ndarray[dtype=double, ndim=1] high = self._high
         for ii in xrange(N):
-            if not (low[ii] < proposal[ii] < high[ii]):
+            if not (low[ii] <= proposal[ii] <= high[ii]):
                 return False
         return True
 
