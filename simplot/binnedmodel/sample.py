@@ -134,9 +134,9 @@ class BinnedSampleWithOscillation(BinnedSample):
 ################################################################################
 
 class CombinedBinnedSample(Sample):
-    def __init__(self, samples, parameter_order=None):
+    def __init__(self, samples, parameter_order=None, ignoreerrors=False):
         self._samples = samples
-        parameter_names, mapping = self._determine_parameter_mapping(samples, parameter_order=parameter_order)
+        parameter_names, mapping = self._determine_parameter_mapping(samples, parameter_order=parameter_order, ignoreerrors=ignoreerrors)
         self._par_map = mapping
         super(CombinedBinnedSample, self).__init__(parameter_names)
 
@@ -158,14 +158,14 @@ class CombinedBinnedSample(Sample):
         x2 = np.fromiter(itertools.imap(x.__getitem__, self._par_map[samplenum]), x.dtype)
         return x2
 
-    def _determine_parameter_mapping(self, samples, parameter_order=None):
+    def _determine_parameter_mapping(self, samples, parameter_order=None, ignoreerrors=False):
         parameter_names = []
         for s in samples:
             for p in s.parameter_names:
                 if p not in parameter_names:
                     parameter_names.append(p)
         if parameter_order:
-            if not set(parameter_names) == set(parameter_order):
+            if (not set(parameter_names) == set(parameter_order)) and (not ignoreerrors):
                 raise Exception("user parameter order does not contain the correct parameters", MonteCarloParameterMismatch.compare_parameters_message(parameter_names, parameter_order))
             parameter_names = list(parameter_order)
         mapping = []
