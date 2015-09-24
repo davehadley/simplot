@@ -5,6 +5,9 @@ cimport numpy as np
 
 from libc.math cimport exp
 
+from simplot.mc.montecarlo import generate_timed as _gen_timed
+from simplot.mc.montecarlo import generate_events as _gen_events
+
 ################################################################################
 
 class McMcSetupError(Exception):
@@ -136,3 +139,25 @@ cdef class AdaptiveMetropolisHastingsAlgorithm(MetropolisHastingsAlgorithm):
                 self._total = 0
         return theta, likelihood
 
+def generate_timed(toymc, maxseconds, maxevents=None, name=None):
+    for x in _gen_timed(toymc=toymc, maxseconds=maxseconds, maxevents=maxevents, name=name):
+        yield x
+    if name is not None:
+        _print_eff_str(toymc)
+    return
+
+def generate_events(toymc, n, name=None):
+    for x in _gen_events(toymc=toymc, n=n, name=name):
+        yield x
+    if name is not None:
+        _print_eff_str(toymc)
+    return
+
+def _print_eff_str(toymc):
+    try:
+        eff = toymc.efficiency()
+        effmsg = "%.0f%% (%.2e)" % ((eff * 100.0), eff)
+    except AttributeError:
+        effmsg = "unknown"
+    print "efficiency = ", effmsg
+    return

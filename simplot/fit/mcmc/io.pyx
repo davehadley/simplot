@@ -1,4 +1,4 @@
-from simplot.mc.montecarlo import generate_timed, generate_events
+from simplot.fit.mcmc.metropolishastings import generate_timed, generate_events
 
 import numpy as np
 cimport numpy as np
