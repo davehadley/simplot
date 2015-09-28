@@ -226,7 +226,6 @@ class MultiVariateGaussianGenerator(Generator):
         self._decomp = EigenDecomposition(self._cov, dtype=float)
         eigenvalues = self._removenegative(self._decomp.eigenvalues)
         self._eigensigma = np.sqrt(eigenvalues)
-        self._transform = np.array(self._decomp.eigenvectors)
         for arr in [self._mu, self._cov, self._sigma, self._eigensigma]:
             arr.setflags(write=False)
         self._rng = np.random.RandomState(seed=seed)
