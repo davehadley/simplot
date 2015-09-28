@@ -42,7 +42,14 @@ cdef class MetropolisHastingsAlgorithm(object):
         self._success = 0
         self._random = np.random.RandomState(seed)
         #compute the intial likelihood values
-        self._likelihood = self._function(self._theta) 
+        self._likelihood = self._function(self._theta)
+        self._check_inputs()
+        return
+
+    def _check_inputs(self):
+        for ii, (l, h) in enumerate(zip(self._low, self._high)):
+            if l >= h:
+                raise McMcSetupError("invalid interval for parameter", ii, self._parameter_names[ii])
         return
 
     @property

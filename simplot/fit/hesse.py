@@ -22,6 +22,13 @@ class Hesse:
         self._updatedelta = False
         self._verbosity = verbosity
         self._ignore_errors = ignore_errors
+        self._check_inputs()
+
+    def _check_inputs(self):
+        for ii, x in enumerate(self._delta):
+            if x == 0.0:
+                raise ValueError("Hesse has zero step size for dimension " + str(ii))
+        return
 
     def run(self):
         self._cache_error_matrix()

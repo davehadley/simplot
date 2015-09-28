@@ -126,6 +126,8 @@ class GaussianProposalFunction(object):
     def _sanityCheckState(self):
         if not np.all(np.isfinite(self.sigma)):
             raise McMcSetupError("sigma list contains NaN", self.infoString())
+        if np.any(np.iscomplex(self.sigma)):
+            raise McMcSetupError("complex sigma in GaussianProposalFunction", self.sigma)
     
     def generate(self, parameters):
         x = self._result
@@ -186,6 +188,8 @@ class GaussianTransformProposalFunction(object):
     def _sanityCheckInput(self):
         if not len(self.sigma) == self.nParameters:
             raise McMcSetupError("sigma list must have an entry for each parameter (")
+        if np.any(np.iscomplex(self.sigma)):
+            raise McMcSetupError("complex sigma in GaussianProposalFunction", self.sigma)
     
     def _autoCalcWidthParameters(self):
         #automatically calculate width parameters
@@ -286,6 +290,11 @@ class MultiVariateGaussianProposal(object):
         self._lhd = _MultiVariateGaussianLikelihoodWrapper(mu, cov)
         parameter_names = ["par_"+str(i) for i in xrange(len(mu))]
         self._gen = MultiVariateGaussianGenerator(parameter_names, mu=[0.0]*len(mu), cov=cov)
+        self._check_input(cov)
+
+    def _check_input(self, cov):
+        if np.any(np.iscomplex(cov)):
+            raise McMcSetupError("complex sigma in MultiVarianteGaussianProposalFunction", self.sigma)
 
     def logDensity(self, xvec, mu):
         return self._lhd(xvec, mu)

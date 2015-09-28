@@ -134,7 +134,8 @@ class Covariance(object):
         avgsum2 = self._sumw2 / float(self._count)
         rms = avgsum2 - mean2
         if self._fractional:
-            rms /= mean2
+            #rms /= mean2
+            rms = safedivide(rms, mean2)
         return rms
 
     def err(self):
@@ -152,7 +153,13 @@ class Covariance(object):
             #return np.divide(np.sqrt(cov[ii][ii]*cov[jj][jj]), np.sqrt(N))
             #with correlations
             uncorrterm = np.divide(np.array(cov[ii][ii]*cov[jj][jj]), N)
-            corr = cov[ii][jj] / np.sqrt(cov[ii][ii]*cov[jj][jj])
+            corr = cov[ii][jj]
+            denominator = np.sqrt(cov[ii][ii]*cov[jj][jj])
+            if denominator != 0.0:
+                corr /= denominator
+            else:
+                #at least one of the variances is zero, set correlation to 0.0
+                corr = 0.0 
             errsq = (1.0 + abs(corr)) * uncorrterm
             ret = np.sqrt(errsq)
             return ret

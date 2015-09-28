@@ -7,6 +7,15 @@ class EigenDecomposition:
         A = np.array(A, copy=True, dtype=dtype)
         eigenvalues, eigenvectors, inveigenvectors = self._decompose(A)
         self.A = A
+        #check for complex
+        if dtype is not None and np.isrealobj(dtype):
+            #check for complex eigenvalues
+            if any(np.any(np.iscomplex(arr)) for arr in [eigenvalues, eigenvectors, inveigenvectors]):
+                print "WARNING: eigen decomposition contains complex values, but casting to a real data-type."
+                #convert arrays to real
+                eigenvalues = np.real(eigenvalues)
+                eigenvectors = np.real(eigenvectors)
+                inveigenvectors = np.real(inveigenvectors)
         self.eigenvectors = np.array(eigenvectors, dtype=dtype)
         self.eigenvalues = np.array(eigenvalues, dtype=dtype)
         self.diageigenvalues = np.diag(self.eigenvalues)
