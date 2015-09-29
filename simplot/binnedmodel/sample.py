@@ -21,7 +21,7 @@ class Sample(object):
 ################################################################################
 
 class BinnedSample(Sample):
-    def __init__(self, name, binning, observables, data, cache_name=None, systematics=None):
+    def __init__(self, name, binning, observables, data, cache_name=None, systematics=None, cache_dir=None):
         parameter_names = self._build_parameter_names(systematics)
         super(BinnedSample, self).__init__(parameter_names)
         self.name = name
@@ -31,7 +31,9 @@ class BinnedSample(Sample):
         def func():
             return self._loaddata(data, systematics)
         if cache_name:
-            data = cache(cache_name, func)
+            if cache_dir is None:
+                cache_dir = "/tmp/cache-binned-sample/"
+            data = cache(cache_name, func, tmpdir=cache_dir)
         else:
             data = func()
         self._model, self.N_sel, self.N_nosel = self._buildmodel(systematics, data, observables)
@@ -76,7 +78,7 @@ class BinnedSample(Sample):
 ################################################################################
 
 class BinnedSampleWithOscillation(BinnedSample):
-    def __init__(self, name, binning, observables, data, enuaxis, flavaxis, distance, cache_name=None, systematics=None, probabilitycalc=None):
+    def __init__(self, name, binning, observables, data, enuaxis, flavaxis, distance, cache_name=None, systematics=None, probabilitycalc=None, cache_dir=None):
         self._enu_axis_name = enuaxis
         self._flav_axis_name = flavaxis
         self._distance = distance
@@ -87,6 +89,7 @@ class BinnedSampleWithOscillation(BinnedSample):
                                                           data=data, 
                                                           cache_name=cache_name,
                                                           systematics=systematics,
+                                                          cache_dir=cache_dir,
         )
 
     def _build_parameter_names(self, systematics):
