@@ -84,7 +84,7 @@ class SimpleMcBuilder(object):
         mean = Mean()
         generator = toymc.generator
         if keep is not None and fixed is not None:
-            generator.setfixed(set(keep) + set(fixed))
+            generator.setfixed(set(keep) | set(fixed))
         elif keep is not None:
             generator.setfixed(set(keep))
         elif fixed is not None:
