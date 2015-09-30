@@ -125,7 +125,7 @@ class GaussianProposalFunction(object):
 
     def _sanityCheckState(self):
         if not np.all(np.isfinite(self.sigma)):
-            raise McMcSetupError("sigma list contains NaN", self.infoString())
+            raise McMcSetupError("sigma list contains NaN", self.sigma)
         if np.any(np.iscomplex(self.sigma)):
             raise McMcSetupError("complex sigma in GaussianProposalFunction", self.sigma)
     
