@@ -6,6 +6,7 @@ from simplot.mc.montecarlo import MonteCarloParameterMismatch
 import simplot.sparsehist.sparsehist
 from simplot.sparsehist import SparseHistogram
 from simplot.binnedmodel.model import BinnedModel as _BinnedModel
+from simplot.binnedmodel.model import OscParMode
 from simplot.binnedmodel.model import BinnedModelWithOscillation as _BinnedModelWithOscillation
 
 import numpy as np
@@ -78,11 +79,12 @@ class BinnedSample(Sample):
 ################################################################################
 
 class BinnedSampleWithOscillation(BinnedSample):
-    def __init__(self, name, binning, observables, data, enuaxis, flavaxis, distance, cache_name=None, systematics=None, probabilitycalc=None, cache_dir=None):
+    def __init__(self, name, binning, observables, data, enuaxis, flavaxis, distance, cache_name=None, systematics=None, probabilitycalc=None, oscparmode=OscParMode.SINSQTHETA, cache_dir=None):
         self._enu_axis_name = enuaxis
         self._flav_axis_name = flavaxis
         self._distance = distance
         self._probabilitycalc = probabilitycalc
+        self._oscparmode = oscparmode
         super(BinnedSampleWithOscillation, self).__init__(name=name, 
                                                           binning=binning, 
                                                           observables=observables,
@@ -93,7 +95,12 @@ class BinnedSampleWithOscillation(BinnedSample):
         )
 
     def _build_parameter_names(self, systematics):
-        parameter_names = list(PdgNeutrinoOscillationParameters.ALL_PARS_SINSQ2)
+        if self._oscparmode == OscParMode.SINSQ2THETA:
+            parameter_names = list(PdgNeutrinoOscillationParameters.ALL_PARS_SINSQ2)
+        elif self._oscparmode == OscParMode.SINSQTHETA:
+            parameter_names = list(PdgNeutrinoOscillationParameters.ALL_PARS_SINSQ)
+        else:
+            parameter_names = list(PdgNeutrinoOscillationParameters.ALL_PARS)
         if systematics:
             parameter_names += systematics.parameter_names
         return parameter_names
@@ -112,7 +119,7 @@ class BinnedSampleWithOscillation(BinnedSample):
             import simplot.rootprob3pp.lib
             import ROOT
             probabilitycalc = ROOT.crootprob3pp.Probability()
-        return _BinnedModelWithOscillation(self.parameter_names, selhist, noselhist, observabledim, enudim, flavdim, None, [self._distance], xsec_weights=xsec_weights, flux_weights=flux_weights, probabilitycalc=probabilitycalc), selhist, noselhist
+        return _BinnedModelWithOscillation(self.parameter_names, selhist, noselhist, observabledim, enudim, flavdim, None, [self._distance], xsec_weights=xsec_weights, flux_weights=flux_weights, probabilitycalc=probabilitycalc, oscparmode=self._oscparmode), selhist, noselhist
 
     def _loaddata(self, data, systematics):
         selhist = SparseHistogram(self.binedges)

@@ -2,7 +2,7 @@ import numpy as np
 cimport numpy as np
 
 from simplot.mc.statistics import safedivide
-from simplot.binnedmodel.model import ProbabilityCache
+from simplot.binnedmodel.model import ProbabilityCache, OscParMode
 
 DEF _DIM_ENU = 0
 DEF _DIM_NUPDG = 1
@@ -20,7 +20,7 @@ cdef class SimpleBinnedModelWithOscillation:
     cdef Py_ssize_t _num_enu_bins;
     cdef Py_ssize_t _num_reco_bins;
 
-    def __init__(self, parnames, N_sel, N_nosel, enubinning, detdist, probabilitycalc=None):
+    def __init__(self, parnames, N_sel, N_nosel, enubinning, detdist, probabilitycalc=None, oscparmode=OscParMode.SINSQTHETA):
         self._num_enu_bins = N_sel.shape[_DIM_ENU]
         self._num_reco_bins = N_sel.shape[_DIM_RECO]
         #check shape
@@ -35,7 +35,7 @@ cdef class SimpleBinnedModelWithOscillation:
         self._eff = safedivide(N_sel, N_nosel)
         self.N_nosel = N_nosel
         self._otherflav = np.array([1,0,3,2], dtype=int)
-        self._prob = ProbabilityCache(parnames, enubinning, [detdist], probabilitycalc=probabilitycalc)
+        self._prob = ProbabilityCache(parnames, enubinning, [detdist], probabilitycalc=probabilitycalc, oscparmode=oscparmode)
         self._cache3D = np.copy(N_sel)
         self._cache1D = np.copy(np.sum(N_sel, axis=(_DIM_NUPDG, _DIM_ENU)))
         return

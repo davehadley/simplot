@@ -16,12 +16,33 @@ import StringIO
 
 from libcpp.vector cimport vector
 from libc.stdint cimport uint64_t
+from libc.math cimport asin, sqrt
 
 ctypedef std_map[uint64_t, double].iterator SparseArrayIterator
 
 DEF NO_DET_DIM = 9999
 
+DEF _CODE_THETA = 0
+DEF _CODE_SINSQ2THETA = 1
+DEF _CODE_SINSQTHETA = 2
+
 ################################################################################
+
+class OscParMode:
+    THETA = "theta"
+    SINSQ2THETA = "sinsq2theta"
+    SINSQTHETA = "sinsqtheta"
+
+    @classmethod
+    def toint(cls, mode):
+        result = None
+        if mode == cls.THETA:
+            result = _CODE_THETA
+        elif mode == cls.SINSQ2THETA:
+            result = _CODE_SINSQ2THETA
+        elif mode == cls.SINSQTHETA:
+            result = _CODE_SINSQTHETA
+        return result
 
 cdef class BinnedModel:
     cdef SparseArray _N_sel;
@@ -71,7 +92,7 @@ cdef class BinnedModelWithOscillation:
     cdef _xsec_weights;
     cdef list _parnames;
 
-    def __init__(self, parnames, N_sel, N_nosel, obs, enudim, flavdim, detdim, detdist, flux_weights=None, xsec_weights=None, probabilitycalc=None):
+    def __init__(self, parnames, N_sel, N_nosel, obs, enudim, flavdim, detdim, detdist, flux_weights=None, xsec_weights=None, probabilitycalc=None, oscparmode=OscParMode.SINSQTHETA):
         self._parnames = parnames
         self._shape = N_sel.array().shape()
         self._eff = N_sel.array() / N_nosel.array()
@@ -85,7 +106,7 @@ cdef class BinnedModelWithOscillation:
         self._det_dimension = detdim
         self._otherflav = [1,0,3,2]
         enubinning = N_sel.binning()[enudim]
-        self._prob = ProbabilityCache(parnames, enubinning, detdist, probabilitycalc=probabilitycalc)
+        self._prob = ProbabilityCache(parnames, enubinning, detdist, probabilitycalc=probabilitycalc, oscparmode=oscparmode)
         if flux_weights is None:
             flux_weights = lambda x: _identity(self._shape)
         self._flux_weights = flux_weights
@@ -239,16 +260,17 @@ cdef class ProbabilityCache:
     cdef uint64_t _sdm;
     cdef uint64_t _ldm;
 
+    cdef int _oscparmode;
+
     cdef double _previous_theta12;
     cdef double _previous_theta23;
     cdef double _previous_theta13;
     cdef double _previous_deltacp;
     cdef double _previous_sdm;
     cdef double _previous_ldm;
+    cdef np.ndarray _flav_map;
 
-    cdef np.ndarray _flav_map
-
-    def __init__(self, parnames, enubinning, detdist, probabilitycalc=None):
+    def __init__(self, parnames, enubinning, detdist, probabilitycalc=None, oscparmode=OscParMode.SINSQTHETA):
         self._flav_map = np.array([#appearance
                                                               (0, 0, 2, 2, 1),
                                                               (1, 1, 1, 1, 1),
@@ -267,6 +289,7 @@ cdef class ProbabilityCache:
         self._previous_deltacp = 0.0
         self._previous_sdm = 0.0
         self._previous_ldm = 0.0
+        self._oscparmode = OscParMode.toint(oscparmode)
         if probabilitycalc is None and any([d>0 for d in detdist]):
             raise Exception("invalid probability calculator", probabilitycalc, detdist)
         self._parse_parameter_names(parnames)
@@ -291,11 +314,11 @@ cdef class ProbabilityCache:
         sdm = None
         ldm = None
         for index, p in enumerate(parnames):
-            if p == "theta12" or p == "sinsq2theta12":
+            if p == "theta12" or p == "sinsq2theta12" or p == "sinsqtheta12":
                 theta12 = index
-            elif p == "theta23" or p == "sinsq2theta23":
+            elif p == "theta23" or p == "sinsq2theta23" or p == "sinsqtheta23":
                 theta23 = index
-            elif p == "theta13" or p == "sinsq2theta13":
+            elif p == "theta13" or p == "sinsq2theta13" or p == "sinsqtheta13":
                 theta13 = index
             elif p == "deltacp":
                 deltacp = index
@@ -330,8 +353,29 @@ cdef class ProbabilityCache:
         return not allsame
 
     def update(self, np.ndarray[double, ndim=1] pars):
+        return self._update(pars)
+
+    cdef _update(self, np.ndarray[double, ndim=1] pars):
+        cdef double theta12, theta23, theta13, deltacp, sdm, ldm
+        cdef int oscparmode
         if self._prob and self._haschanged(pars):
-            self._prob.setAll(pars[self._theta12], pars[self._theta23], pars[self._theta13], pars[self._deltacp], pars[self._sdm], pars[self._ldm])
+            #print "DEBUG setting", pars[self._theta12], pars[self._theta23], pars[self._theta13], pars[self._deltacp], pars[self._sdm], pars[self._ldm]
+            theta12 = pars[self._theta12]
+            theta23 = pars[self._theta23]
+            theta13 = pars[self._theta13]
+            deltacp = pars[self._deltacp]
+            sdm = pars[self._sdm]
+            ldm = pars[self._ldm]
+            oscparmode = self._oscparmode
+            if oscparmode == _CODE_SINSQTHETA:
+                theta12 = invsinsqtheta(theta12)
+                theta23 = invsinsqtheta(theta23)
+                theta13 = invsinsqtheta(theta13)
+            elif oscparmode == _CODE_SINSQ2THETA:
+                theta12 = invsinsq2theta(theta12)
+                theta23 = invsinsq2theta(theta23)
+                theta13 = invsinsq2theta(theta13)
+            self._prob.setAll(theta12, theta23, theta13, deltacp, sdm, ldm)
             self._prob.update()
             self._fillcache()
 
@@ -378,6 +422,20 @@ cdef class ProbabilityCache:
                     #array[enubin][detbin][flav_i][flav_j] = p
                     array[enubin,detbin,flav_i,flav_j] = p
         return
+
+cdef double invsinsqtheta(double x):
+    if x < 0.0:
+        x = abs(x)
+    if x > 1.0:
+        x = 1.0
+    return asin(sqrt(x))
+
+cdef double invsinsq2theta(double x):
+    if x < 0.0:
+        x = abs(x)
+    if x > 1.0:
+        x = 1.0
+    return asin(sqrt(x)) / 2.0
 
 ################################################################################
 

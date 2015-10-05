@@ -3,6 +3,7 @@ import math
 from simplot.mc.generators import GaussianGenerator, MultiVariateGaussianGenerator, UniformGenerator, GeneratorList
 from simplot.mc.likelihood import GaussianLikelihood, MultiVariateGaussianLikelihood, CombinedLikelihood, ConstantLikelihood
 from simplot.pdg import PdgNeutrinoOscillationParameters
+from simplot.binnedmodel.sample import OscParMode
 
 class Prior(object):
     def __init__(self, gen, lhd):
@@ -35,17 +36,22 @@ class CombinedPrior(Prior):
         super(CombinedPrior, self).__init__(gen, lhd)
 
 class OscillationParametersPrior(CombinedPrior):
-    def __init__(self, values=None, usereactorconstraint=False, seed=None):
+    def __init__(self, values=None, usereactorconstraint=False, seed=None, oscparmode=OscParMode.SINSQTHETA):
         if values is None:
             values = PdgNeutrinoOscillationParameters()
-        priors = self._buildpriors(values, usereactorconstraint=usereactorconstraint, seed=seed)
+        priors = self._buildpriors(values, usereactorconstraint=usereactorconstraint, seed=seed, oscparmode=oscparmode)
         super(OscillationParametersPrior, self).__init__(priors)
         
-    def _buildpriors(self, values, usereactorconstraint, seed=None):
+    def _buildpriors(self, values, usereactorconstraint, seed=None, oscparmode=OscParMode.SINSQTHETA):
         if seed is not None:
             seed = seed + 230932904 # offset seed, incase user is giving sequential seeds to various generators.
         priors = []
-        parnames = type(values).ALL_PARS_SINSQ2
+        if oscparmode == OscParMode.SINSQTHETA:
+            parnames = type(values).ALL_PARS_SINSQ
+        elif oscparmode == OscParMode.SINSQ2THETA:
+            parnames = type(values).ALL_PARS_SINSQ2
+        else:
+            parnames = type(values).ALL_PARS
         for p in parnames:
             if seed is not None:
                 seed += 1
