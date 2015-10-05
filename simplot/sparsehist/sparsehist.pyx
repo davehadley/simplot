@@ -91,7 +91,11 @@ cdef class SparseArray:
 
     cdef double get(self, vector[uint64_t]& index):
         cdef uint64_t key = self.key(index)
-        return self._data[key]
+        cdef SparseArrayIterator it = self._data.find(key)
+        if (it != self._data.end()):
+            return dereference(it).second;
+        else:
+            return 0.0
 
     cdef void set(self, vector[uint64_t]& index, double value):
         cdef uint64_t key = self.key(index)
