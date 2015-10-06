@@ -203,6 +203,10 @@ class SimpleCombinedMcWithOscillationBuilder(SimpleMcWithOscillationBuilder):
         for s in samples:
             s = self._convert_sample(oscpars, toymc, s, binoffset=binoffset, probabilitycalc=probabilitycalc, oscparmode=oscparmode)
             binoffset += len(s.parameter_names)
+            #subtract off oscillation parameters if they exist in this sample
+            for op in oscpars:
+                if op in s.parameter_names:
+                    binoffset -= 1
             converted.append(s)
         return CombinedBinnedSample(converted, generator.parameter_names)
 
