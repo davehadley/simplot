@@ -79,9 +79,10 @@ class BinnedSample(Sample):
 ################################################################################
 
 class BinnedSampleWithOscillation(BinnedSample):
-    def __init__(self, name, binning, observables, data, enuaxis, flavaxis, distance, cache_name=None, systematics=None, probabilitycalc=None, oscparmode=OscParMode.SINSQTHETA, cache_dir=None):
+    def __init__(self, name, binning, observables, data, enuaxis, flavaxis, distance, beammodeaxis=None, cache_name=None, systematics=None, probabilitycalc=None, oscparmode=OscParMode.SINSQTHETA, cache_dir=None):
         self._enu_axis_name = enuaxis
         self._flav_axis_name = flavaxis
+        self._beam_mode_axis = beammodeaxis
         self._distance = distance
         self._probabilitycalc = probabilitycalc
         self._oscparmode = oscparmode
@@ -110,6 +111,11 @@ class BinnedSampleWithOscillation(BinnedSample):
         observabledim = [self.axisnames.index(p) for p in observables]
         enudim = self.axisnames.index(self._enu_axis_name)
         flavdim = self.axisnames.index(self._flav_axis_name)
+        beammodedim = None
+        distance = [self._distance]
+        if self._beam_mode_axis:
+            beammodedim = self.axisnames.index(self._beam_mode_axis)
+            distance *= len(self.binedges[beammodedim]) - 1
         xsec_weights, flux_weights = None, None
         if systematics:
             xsec_weights, flux_weights = systematics(self.parameter_names, selsysthist, selhist)
@@ -119,7 +125,7 @@ class BinnedSampleWithOscillation(BinnedSample):
             import simplot.rootprob3pp.lib
             import ROOT
             probabilitycalc = ROOT.crootprob3pp.Probability()
-        return _BinnedModelWithOscillation(self.parameter_names, selhist, noselhist, observabledim, enudim, flavdim, None, [self._distance], xsec_weights=xsec_weights, flux_weights=flux_weights, probabilitycalc=probabilitycalc, oscparmode=self._oscparmode), selhist, noselhist
+        return _BinnedModelWithOscillation(self.parameter_names, selhist, noselhist, observabledim, enudim, flavdim, beammodedim, distance, xsec_weights=xsec_weights, flux_weights=flux_weights, probabilitycalc=probabilitycalc, oscparmode=self._oscparmode), selhist, noselhist
 
     def _loaddata(self, data, systematics):
         selhist = SparseHistogram(self.binedges)
