@@ -44,6 +44,8 @@ class OscParMode:
             result = _CODE_SINSQTHETA
         return result
 
+################################################################################
+
 cdef class BinnedModel:
     cdef SparseArray _N_sel;
     cdef _flux_weights;
@@ -90,6 +92,7 @@ cdef class BinnedModelWithOscillation:
     cdef _prob;
     cdef _flux_weights;
     cdef _xsec_weights;
+    cdef _osc_flux_weights;
     cdef list _parnames;
 
     def __init__(self, parnames, N_sel, N_nosel, obs, enudim, flavdim, detdim, detdist, flux_weights=None, xsec_weights=None, probabilitycalc=None, oscparmode=OscParMode.SINSQTHETA):
@@ -113,13 +116,15 @@ cdef class BinnedModelWithOscillation:
         if xsec_weights is None:
             xsec_weights = lambda x: _identity(self._shape)
         self._xsec_weights = xsec_weights
+        self._osc_flux_weights = OscFluxWeights(N_nosel, enudim, flavdim, detdim, self._prob)
         return
 
     def __call__(self, pars):
         return self.eval(pars)
 
     cdef eval(self, pars):
-        return self._xsec_weights(pars) * self._eff * self._osc_flav_rotation(pars, self._flux_weights(pars) * self.N_nosel)
+        #return self._xsec_weights(pars) * self._eff * self._osc_flav_rotation(pars, self._flux_weights(pars) * self.N_nosel)
+        return self._xsec_weights(pars) * (self._eff * (self._osc_flux_weights(pars) * (self._flux_weights(pars) * self.N_nosel)))
         # avoid unneccessary new copies
         #cdef SparseArray r = self._flux_weights(pars) * self.N_nosel
         #r = self._osc_flav_rotation(pars, self._flux_weights(pars) * self.N_nosel)
@@ -436,6 +441,123 @@ cdef double invsinsq2theta(double x):
     if x > 1.0:
         x = 1.0
     return asin(sqrt(x)) / 2.0
+
+################################################################################
+
+cdef class OscFluxWeights:
+
+    cdef np.ndarray _weights;
+    cdef np.ndarray _nominal;
+    cdef _prob;
+    cdef SparseArray _sparse_weights;
+    cdef uint64_t _enudim;
+    cdef uint64_t _flavdim;
+    cdef uint64_t _detdim;
+    cdef np.ndarray _otherflav;
+
+    def __init__(self, N_nosel, enudim, flavdim, detdim, prob):
+        #determine output shape
+        shape = list(N_nosel.array().shape())
+        #setup cache arrays
+        if detdim == NO_DET_DIM:
+            ndet = 1
+        else:
+            ndet = shape[detdim]
+        self._nominal = np.zeros(shape=(shape[enudim], shape[flavdim], ndet), dtype=float)
+        self._init_nominal(N_nosel, self._nominal, enudim, flavdim, detdim)
+        self._weights = np.copy(self._nominal)
+        self._prob = prob
+        self._enudim = enudim
+        self._flavdim = flavdim
+        self._detdim = detdim
+        self._otherflav = np.array([1, 0, 3, 2], dtype=np.uint64)
+        #setup output array
+        for i in xrange(len(shape)):
+            if not ((i == enudim) or (i == flavdim) or (i == detdim)):
+                shape[i] = 0
+        self._sparse_weights = SparseArray(shape)
+        self._init_sparse_weights(self._sparse_weights)
+
+    def _init_nominal(self, N_nosel, nominal, enudim, flavdim, detdim):
+        if detdim == NO_DET_DIM:
+            projdim = (enudim, flavdim)
+            proj = N_nosel.array().project(projdim)
+            shape = proj.shape()
+            for ienu, iflav in itertools.product(xrange(shape[0]), xrange(shape[1])):
+                nominal[ienu, iflav, 0] = proj[ienu, iflav, 0]
+        else:
+            projdim = (enudim, flavdim, detdim)
+            proj = N_nosel.array().project(projdim)
+            shape = proj.shape()
+            for ienu, iflav, idet in itertools.product(xrange(shape[0]), xrange(shape[1]), xrange(shape[2])):
+                nominal[ienu, iflav, idet] = proj[ienu, iflav, idet]
+        return
+
+    def _init_sparse_weights(self, arr):
+        shape = arr.shape()
+        ranges = [xrange(max(s, 1)) for s in shape]
+        for index in itertools.product(*ranges):
+            arr[index] = 1.0
+        return
+
+    def __call__(self, pars):
+        self._update_weights_array(pars)
+        self._update_sparse_array()
+        return self._sparse_weights
+
+    @cython.boundscheck(True)
+    cdef _update_weights_array(self, pars):
+        cdef np.ndarray[double, ndim=3] nominal = self._nominal
+        cdef np.ndarray[double, ndim=3] weights = self._weights
+        cdef np.ndarray[uint64_t, ndim=1] otherflav = self._otherflav;
+        self._prob.update(pars)
+        cdef np.ndarray[double, ndim=4] posc = self._prob.array
+        cdef int numenubins = nominal.shape[0]
+        cdef int numflavbins = nominal.shape[1]
+        cdef int numdetbins = nominal.shape[2]
+        #declare variables for loop
+        cdef double pdis, papp, nom, nom_i, nom_j, w;
+        cdef Py_ssize_t ienu, iflav, idet, flav_i, flav_j;
+        for ienu in xrange(numenubins):
+            for iflav in xrange(numflavbins):
+                for idet in xrange(numdetbins):
+                    flav_j = iflav
+                    flav_i = otherflav[iflav]
+                    pdis = posc[ienu, idet, flav_j, flav_j]
+                    papp = posc[ienu, idet, flav_i, flav_j]
+                    nom_j = nominal[ienu, flav_j, idet]
+                    nom_i = nominal[ienu, flav_i, idet]
+                    nosc_j = (pdis * nom_j) + (papp * nom_i)
+                    if nom_j != 0.0:
+                        w = nosc_j / nom_j
+                    else:
+                        w = 0.0
+                    weights[ienu, flav_j, idet] = w
+        return
+
+    cdef _update_sparse_array(self):
+        cdef np.ndarray[double, ndim=3] weights = self._weights
+        cdef SparseArray arr = self._sparse_weights
+        cdef SparseArrayIterator it = arr._data.begin()
+        cdef SparseArrayIterator end = arr._data.end()
+        cdef double value;
+        cdef uint64_t enudim = self._enudim
+        cdef uint64_t flavdim = self._flavdim
+        cdef uint64_t detdim = self._detdim
+        cdef uint64_t key, ienu, iflav, idet;
+        while it != end:
+            key = dereference(it).first
+            index = arr.decodekey(key)
+            ienu = index[enudim]
+            iflav = index[flavdim]
+            if detdim == NO_DET_DIM:
+                idet = 0
+            else:
+                idet = index[detdim]
+            value = weights[ienu, iflav, idet]
+            dereference(it).second = value
+            preincrement(it)
+        return
 
 ################################################################################
 
