@@ -148,3 +148,19 @@ class EventRateLikelihood(Likelihood):
         observed = self._observed
         expected = self._model(x)
         return poisson_log_density(observed, expected)
+
+################################################################################
+
+class EventRateLikelihoodWithScale(Likelihood):
+    def __init__(self, model, data, scale):
+        parameter_names = model.parameter_names
+        self._scale = float(scale)
+        self._model = model
+        self._observed = np.copy(data) * scale
+        super(EventRateLikelihoodWithScale, self).__init__(parameter_names)
+
+    def __call__(self, x):
+        self._checksize(x)
+        observed = self._observed #observed is already scaled
+        expected = self._model(x) * self._scale
+        return poisson_log_density(observed, expected)

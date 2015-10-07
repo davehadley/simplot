@@ -91,7 +91,11 @@ cdef class SparseArray:
 
     cdef double get(self, vector[uint64_t]& index):
         cdef uint64_t key = self.key(index)
-        return self._data[key]
+        cdef SparseArrayIterator it = self._data.find(key)
+        if (it != self._data.end()):
+            return dereference(it).second;
+        else:
+            return 0.0
 
     cdef void set(self, vector[uint64_t]& index, double value):
         cdef uint64_t key = self.key(index)
@@ -467,8 +471,14 @@ cdef class SparseHistogram:
             #i = bisect_right(self._binning[dim], x) - 1
             i = array_bisect_right(self._binning[dim], x) - 1
             #assert i == (bisect_right(self._binning[dim], x) - 1)
+            #if i < 0:
+            #    i = self._arr._shape[dim]
             if i < 0:
-                i = self._arr._shape[dim]
+                #print "DEBUG underflow ", dim, i, x, self._binning[dim]
+                i = 0
+            if i >= self._arr._shape[dim]:
+                #print "DEBUG overflow ", dim, i, x, self._binning[dim]
+                i = self._arr._shape[dim] - 1
             index.push_back(i)
         return index
 

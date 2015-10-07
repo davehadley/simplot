@@ -41,8 +41,14 @@ class TestModel(unittest.TestCase):
         #try with cache
         cachestr = "".join(random.choice(string.ascii_uppercase + string.digits) for _ in range(25))
         #run twice to test read and write
-        self._buildsimplemodel(cachestr=cachestr)
-        self._buildsimplemodel(cachestr=cachestr)
+        model1 = self._buildsimplemodel(cachestr=cachestr)
+        model2 = self._buildsimplemodel(cachestr=cachestr) # definitely loaded from disk
+        #compare models
+        for pars in itertools.product(range(-5, 5), repeat=2):
+            x1 = model1(pars)
+            x2 = model2(pars)
+            for xi1, xi2 in zip(x1, x2):
+                self.assertAlmostEquals(xi1, xi2)
         return
 
     def test_generate_mc(self):
@@ -69,7 +75,19 @@ class TestModel(unittest.TestCase):
         return arr * (norm/np.sum(arr))
 
     def test_generate_mc_values(self):
+        self.generate_mc_values()
+        self.generate_mc_values(fixflux=True, fixxsec=True)
+        self.generate_mc_values(fixflux=True)
+        self.generate_mc_values(fixxsec=True)
+
+    def generate_mc_values(self, fixflux=False, fixxsec=False):
         _, toymc, _ = self._buildmodelnoosc()
+        if fixxsec and fixflux:
+            toymc.generator.fixallexcept([]) # fix all parameters
+        elif fixxsec:
+            toymc.generator.setfixed(["signal", "bkgd"]) # fix flux errors
+        elif fixflux:
+            toymc.generator.fixallexcept(["signal", "bkgd"]) # fix flux errors
         mean = Mean()
         stddev = StandardDeviation()
         statistics = [mean, stddev]
@@ -84,7 +102,18 @@ class TestModel(unittest.TestCase):
         expectedmean = signal + background
         serr = 0.1
         berr = 0.1
-        expectedsigma = np.sqrt(np.power(serr*signal, 2) + np.power(berr*background, 2)) * (mean.eval()/expectedmean) # correct sigma for stat err on mean
+        ferr = 0.1
+        expectedvariance_flux = 8.0*np.power(ferr*0.125*(signal+background), 2)
+        expectedvariance_xsec = np.power(serr*signal, 2) + np.power(berr*background, 2)
+        if not any((fixflux, fixxsec)):
+            expectedsigma = np.sqrt(expectedvariance_xsec + expectedvariance_flux)
+        elif fixflux and fixxsec:
+            expectedsigma = np.zeros(len(expectedvariance_flux))
+        elif fixflux:
+            expectedsigma = np.sqrt(expectedvariance_xsec)
+        elif fixxsec:
+            expectedsigma = np.sqrt(expectedvariance_flux)
+        expectedsigma *= (mean.eval()/expectedmean) # correct sigma for stat err on mean
         #check prediction
         #import matplotlib.pyplot as plt
         #plt.errorbar(x, mean.eval(), yerr=np.sqrt(mean.eval()), color="blue")
@@ -95,7 +124,7 @@ class TestModel(unittest.TestCase):
             e = np.sqrt(e**2 + mex)
             self.assertAlmostEquals(m, mex, delta=5.0*e)
         for s, e, sex in itertools.izip_longest(stddev.eval(), stddev.err(), expectedsigma):
-            self.assertAlmostEquals(s, sex, delta=3.0*e)
+            self.assertAlmostEquals(s, sex, delta=5.0*e)
         return
 
     def _buildsimplemodel(self, cachestr=None):
@@ -106,7 +135,7 @@ class TestModel(unittest.TestCase):
             for _ in xrange(N):
                 coord = np.random.poisson(size=2)
                 yield coord, 1.0, [(-4.0, 1.0, 5.0), (-4.0, 1.0, 5.0)]
-        binning = [("a", np.arange(0.0, 5.0)), ("b", np.arange(0.0, 5.0))]
+        binning = [("a", np.arange(0.0, 10.0)), ("b", np.arange(0.0, 10.0))]
         observables = ["a"]
         model = BinnedSample("simplemodel", binning, observables, gen(10**4), systematics=systematics, cache_name=cachestr)
         return model
@@ -131,13 +160,19 @@ class TestModel(unittest.TestCase):
                 nupdg = np.random.randint(4)
                 if np.random.uniform() > 0.5:
                     #signal
-                    true = np.random.normal(1.0, 0.25)
+                    while True:
+                        true = np.random.normal(1.0, 0.25)
+                        if 0.0 <= true <= 5.0:
+                            break
                     syst = signalsyst
                 else:
                     #bkgd
                     true = np.random.uniform(0.0, 5.0)
                     syst = bkgdsyst
-                reco = np.random.normal(true, 0.0001)
+                while True:
+                    reco = np.random.normal(true, 0.0001)
+                    if 0.0 <= reco <= 5.0:
+                        break
                 beammode = np.random.randint(2)
                 if beammode == 1:
                     nupdg = {0:1, 1:0, 2:3, 3:2}[nupdg]

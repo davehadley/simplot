@@ -3,9 +3,13 @@
 
 *.so
 *.cpp
+*.c
+*.root
 
 \#*
 .\#*
+
+*.html
 
 build/
 run/

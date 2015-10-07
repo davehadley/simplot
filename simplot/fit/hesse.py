@@ -3,12 +3,14 @@ import itertools
 import operator
 import simplot.progress
 
+from simplot.mc.eigendecomp import EigenDecomposition
+
 class Verbosity:
     QUIET = 0
     PRINT_PROGRESS = 1
 
 class Hesse:
-    def __init__(self, func, xvec, delta=None, updatedelta=False, verbosity=Verbosity.QUIET):
+    def __init__(self, func, xvec, delta=None, updatedelta=False, verbosity=Verbosity.QUIET, ignore_errors=False):
         self._func = func
         self._xvec = xvec
         if delta is None:
@@ -19,6 +21,14 @@ class Hesse:
         self._error_stddev = None
         self._updatedelta = False
         self._verbosity = verbosity
+        self._ignore_errors = ignore_errors
+        self._check_inputs()
+
+    def _check_inputs(self):
+        for ii, x in enumerate(self._delta):
+            if x == 0.0:
+                raise ValueError("Hesse has zero step size for dimension " + str(ii))
+        return
 
     def run(self):
         self._cache_error_matrix()
@@ -37,19 +47,28 @@ class Hesse:
         return self._error_matrix
 
     def _cache_error_matrix(self):
-        matrix_d2dxdy = self._calculate_second_partial_derivative_matrix(self._func, self._xvec, self._delta)
-        #invert matrix
-        try:
-            inverse = -numpy.matrix(matrix_d2dxdy).I
-        except numpy.linalg.LinAlgError:
-            raise Exception("Unable to invert matrix", self._getdiagonal(matrix_d2dxdy))
+        matrix_d2dxdy, inverse = self._calculate_second_partial_derivative_matrix_and_inverse(self._func, self._xvec, self._delta)
         if self._updatedelta:
             #set delta to the diagonal of the matrix
             self._delta = self._getdiagonal(inverse)
-            matrix_d2dxdy = self._calculate_second_partial_derivative_matrix(self._func, self._xvec, self._delta)
+            matrix_d2dxdy, inverse = self._calculate_second_partial_derivative_matrix_and_inverse(self._func, self._xvec, self._delta)
         self._matrix_d2dxdy = matrix_d2dxdy
         self._error_matrix = numpy.array(inverse, dtype=float)
         return
+
+
+    def _calculate_second_partial_derivative_matrix_and_inverse(self, func, xvec, delta):
+        matrix = self._calculate_second_partial_derivative_matrix(self._func, self._xvec, self._delta)
+        #invert matrix
+        try:
+            inverse = -numpy.matrix(matrix).I
+        except numpy.linalg.LinAlgError:
+            if not self._ignore_errors:
+                raise Exception("Unable to invert matrix", self._getdiagonal(matrix))
+            else:
+                matrix = self._fix_matrix(matrix)
+                inverse = -numpy.matrix(matrix).I
+        return matrix, inverse
 
     def _getdiagonal(self, m):
         return numpy.array([m[ii, ii] for ii in xrange(len(m))], dtype=float)
@@ -103,3 +122,12 @@ class Hesse:
         numer = reduce(operator.mul, xrange(n, n - r, -1))
         denom = reduce(operator.mul, xrange(1, r + 1))
         return numer / denom
+
+    def _fix_matrix(self, matrix):
+        m = numpy.array(matrix)
+        decomp = EigenDecomposition(m)
+        A = numpy.copy(decomp.diageigenvalues)
+        for ii in xrange(len(A)):
+            if A[ii,ii] >= 0.0:
+                A[ii,ii] = -1.0e-12 # force small positive eigenvalue
+        return numpy.matrix(decomp.transform_matrix_from_eigen_basis(A))

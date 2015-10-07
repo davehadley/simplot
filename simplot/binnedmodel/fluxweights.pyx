@@ -1,4 +1,4 @@
-# cython: profile=True
+# cython: profile=False
 from simplot.sparsehist.sparsehist cimport SparseArray
 
 from libcpp.vector cimport vector
