@@ -108,7 +108,6 @@ class CacheRoot(Cache):
         f = ROOT.TFile(fname, "read")
         data = {}
         for key in f.GetListOfKeys():
-            print "DEBUG", key.GetName()
             obj = key.ReadObj()
             data[key.GetName()] = obj
         #unpickle
