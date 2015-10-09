@@ -7,6 +7,7 @@ import math
 import csv
 
 import prettytable
+import subprocess
 
 ###############################################################################
 
@@ -303,6 +304,29 @@ class TableOrgOutput(TableOutputBase):
         for row in flattable:
             print >>sio, row
         return sio.getvalue()
+
+    def write(self, table, filename, latex=False, pdf=False, html=False):
+        super(TableOrgOutput, self).write(table, filename)
+        if (latex or pdf or html) and os.path.exists(filename):
+            with open("/dev/null", "w") as devnull:
+                cmd = ["emacs",  filename, "--batch", "-u", "${USER}", "-f", "org-latex-export-to-latex", "--kill"]
+                subprocess.call(cmd, stdout=devnull, stderr=devnull)
+                if pdf or html:
+                    latexfilename = filename.replace(".org", ".tex")
+                    if latexfilename == filename:
+                        latexfilename += ".tex"
+                    if os.path.exists(latexfilename):
+                        if pdf:
+                            try:
+                                cmd = ["pandoc", "-f", "latex", "-o", latexfilename.replace(".tex", ".pdf"), latexfilename]
+                                subprocess.check_call(cmd, stdout=devnull, stderr=devnull)
+                            except:
+                                cmd = ["pdflatex", "-output-directory", os.path.basename(latexfilename)]
+                                subprocess.call(cmd, stdout=devnull, stderr=devnull, cwd=os.path.dirname(latexfilename))
+                        if html:
+                            cmd = ["htlatex", os.path.basename(latexfilename)]
+                            subprocess.call(cmd, stdout=devnull, stderr=devnull, cwd=os.path.dirname(latexfilename))
+        return
 
 ###############################################################################
 
