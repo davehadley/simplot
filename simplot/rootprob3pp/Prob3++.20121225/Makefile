@@ -35,7 +35,7 @@ $(lib3p) : $(OBJS)
 	ranlib $@
 	
 sharedLib: mosc.o mosc3.o
-	gcc -shared -Wl,-soname,libProb3ppShared.so.1 -o libProb3ppShared.so  mosc.o mosc3.o
+	gcc -shared -o libProb3ppShared.so  mosc.o mosc3.o
 
 probRoot: probRoot.o $(lib3p) 
 	$(RM) $@
