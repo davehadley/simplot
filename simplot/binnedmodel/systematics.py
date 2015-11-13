@@ -93,6 +93,7 @@ class FluxSystematics(Systematics):
 
     @classmethod
     def make_flux_parameter_map(cls, enubinning, flux_error_binning, name_pattern=None):
+        cls._check_bin_mapping(enubinning, flux_error_binning)
         result = OrderedDict()
         detbin = -1
         for key, beambin, flavbin, binning in flux_error_binning:
@@ -107,6 +108,14 @@ class FluxSystematics(Systematics):
                         l.append((detbin, beambin, flavbin, xi))
                 result[parname] = l
         return result
+
+    @classmethod
+    def _check_bin_mapping(cls, enubinning, flux_error_binning):
+        for _, _, _, errbinning in flux_error_binning:
+            for x in errbinning:
+                if not x in enubinning:
+                    raise Exception("ERROR: flux parameter mis-mapping. An error bin edge is not in the global enu binning", x, enubinning)
+        return
 
 ################################################################################
 
