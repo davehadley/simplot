@@ -123,8 +123,8 @@ cdef class BinnedModelWithOscillation:
         return self.eval(pars)
 
     cdef eval(self, pars):
-        #return self._xsec_weights(pars) * self._eff * self._osc_flav_rotation(pars, self._flux_weights(pars) * self.N_nosel)
-        return self._xsec_weights(pars) * (self._eff * (self._osc_flux_weights(pars) * (self._flux_weights(pars) * self.N_nosel)))
+        return self._xsec_weights(pars) * self._eff * self._osc_flav_rotation(pars, self._flux_weights(pars) * self.N_nosel)
+        #return self._xsec_weights(pars) * (self._eff * (self._osc_flux_weights(pars) * (self._flux_weights(pars) * self.N_nosel)))
         # avoid unneccessary new copies
         #cdef SparseArray r = self._flux_weights(pars) * self.N_nosel
         #r = self._osc_flav_rotation(pars, self._flux_weights(pars) * self.N_nosel)
