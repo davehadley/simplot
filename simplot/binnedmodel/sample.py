@@ -50,10 +50,10 @@ class BinnedSample(Sample):
         observabledim = [self.axisnames.index(p) for p in observables]
         #xsec_weights = self._buildxsecweights(systematics, systhist, hist)
         #flux_weights = self._buildfluxweights(fluxsystematics)
-        xsec_weights, flux_weights = None, None
+        det_weights, xsec_weights, flux_weights = None, None, None
         if systematics:
-            xsec_weights, flux_weights = systematics(self.parameter_names, systhist, hist)
-        return _BinnedModel(self.parameter_names, hist, observabledim, xsec_weights=xsec_weights, flux_weights=flux_weights), hist, None
+            det_weights, xsec_weights, flux_weights = systematics(self.parameter_names, systhist, hist)
+        return _BinnedModel(self.parameter_names, hist, observabledim, det_weights=det_weights, xsec_weights=xsec_weights, flux_weights=flux_weights), hist, None
 
     def __call__(self, x):
         if len(x) != len(self.parameter_names):
@@ -116,16 +116,16 @@ class BinnedSampleWithOscillation(BinnedSample):
         if self._beam_mode_axis:
             beammodedim = self.axisnames.index(self._beam_mode_axis)
             distance *= len(self.binedges[beammodedim]) - 1
-        xsec_weights, flux_weights = None, None
+        det_weights, xsec_weights, flux_weights = None, None, None
         if systematics:
-            xsec_weights, flux_weights = systematics(self.parameter_names, selsysthist, selhist)
+            det_weights, xsec_weights, flux_weights = systematics(self.parameter_names, selsysthist, selhist)
         probabilitycalc = self._probabilitycalc
         if probabilitycalc is None:
             #no user supplied probability calculator, use prob3++
             import simplot.rootprob3pp.lib
             import ROOT
             probabilitycalc = ROOT.crootprob3pp.Probability()
-        return _BinnedModelWithOscillation(self.parameter_names, selhist, noselhist, observabledim, enudim, flavdim, beammodedim, distance, xsec_weights=xsec_weights, flux_weights=flux_weights, probabilitycalc=probabilitycalc, oscparmode=self._oscparmode), selhist, noselhist
+        return _BinnedModelWithOscillation(self.parameter_names, selhist, noselhist, observabledim, enudim, flavdim, beammodedim, distance, det_weights=det_weights, xsec_weights=xsec_weights, flux_weights=flux_weights, probabilitycalc=probabilitycalc, oscparmode=self._oscparmode), selhist, noselhist
 
     def _loaddata(self, data, systematics):
         selhist = SparseHistogram(self.binedges)
