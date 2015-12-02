@@ -145,3 +145,23 @@ class FluxAndSplineSystematics(Systematics):
         return self._splinesyst.parameter_names + self._fluxsyst.parameter_names
 
 ################################################################################
+
+class DetectorFluxAndSplineSystematics(FluxAndSplineSystematics):
+    def __init__(self, det_systematics, spline_parameter_values, enudim, nupdgdim, beammodedim, fluxparametermap):
+        super(DetectorFluxAndSplineSystematics, self).__init__(spline_parameter_values, enudim, nupdgdim, beammodedim, fluxparametermap)
+        self._detector_systematics = det_systematics
+
+    @property
+    def spline_parameter_values(self):
+        return self._splinesyst.spline_parameter_values
+
+    def __call__(self, parameter_names, systhist, nominalhist):
+        det_weights, _, _ = self._detector_systematics(parameter_names, systhist, nominalhist)
+        _, xsec_weights, flux_weights = super(DetectorFluxAndSplineSystematics, self).__call__(parameter_names, systhist, nominalhist)
+        return det_weights, xsec_weights, flux_weights
+
+    @property
+    def parameter_names(self):
+        return self._detector_systematics.parameter_names + self._splinesyst.parameter_names + self._fluxsyst.parameter_names
+
+################################################################################
