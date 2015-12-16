@@ -1,0 +1,11 @@
+
+*.o
+*.so
+*.a
+*.d
+*.root
+
+probAnalytic
+probRoot
+probLinear
+
