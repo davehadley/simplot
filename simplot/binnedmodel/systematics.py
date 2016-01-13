@@ -27,7 +27,8 @@ class SplineSystematics(Systematics):
     def __call__(self, parameter_names, systhist, nominalhist):
         xsec_weights = self._buildxsecweights(self.spline_parameter_values, parameter_names, systhist, nominalhist)
         flux_weights = self._buildfluxweights()
-        return xsec_weights, flux_weights
+        det_weights = self._builddetweights()
+        return det_weights, xsec_weights, flux_weights
 
     @property
     def spline_parameter_values(self):
@@ -56,6 +57,10 @@ class SplineSystematics(Systematics):
         fw = None
         return fw
 
+    def _builddetweights(self):
+        dw = None
+        return dw
+
     def _build_parameter_names(self, systematics):
         parameter_names = []
         if systematics:
@@ -77,9 +82,10 @@ class FluxSystematics(Systematics):
         return self._fluxparametermap.keys()
 
     def __call__(self, parameter_names, systhist, nominalhist):
+        det_weights = None
         xsec_weights = None
         flux_weights = self._buildfluxweights(parameter_names, nominalhist)
-        return xsec_weights, flux_weights
+        return det_weights, xsec_weights, flux_weights
 
     def _buildfluxweights(self, parameter_names, nominalhist):
         fw = FluxWeights(parameter_names, nominalhist.array().shape(),
@@ -129,12 +135,33 @@ class FluxAndSplineSystematics(Systematics):
         return self._splinesyst.spline_parameter_values
 
     def __call__(self, parameter_names, systhist, nominalhist):
-        xsec_weights, _ = self._splinesyst(parameter_names, systhist, nominalhist)
-        _, flux_weights = self._fluxsyst(parameter_names, systhist, nominalhist)
-        return xsec_weights, flux_weights
+        det_weights = None
+        _, xsec_weights, _ = self._splinesyst(parameter_names, systhist, nominalhist)
+        _, _, flux_weights = self._fluxsyst(parameter_names, systhist, nominalhist)
+        return det_weights, xsec_weights, flux_weights
 
     @property
     def parameter_names(self):
         return self._splinesyst.parameter_names + self._fluxsyst.parameter_names
+
+################################################################################
+
+class DetectorFluxAndSplineSystematics(FluxAndSplineSystematics):
+    def __init__(self, det_systematics, spline_parameter_values, enudim, nupdgdim, beammodedim, fluxparametermap):
+        super(DetectorFluxAndSplineSystematics, self).__init__(spline_parameter_values, enudim, nupdgdim, beammodedim, fluxparametermap)
+        self._detector_systematics = det_systematics
+
+    @property
+    def spline_parameter_values(self):
+        return self._splinesyst.spline_parameter_values
+
+    def __call__(self, parameter_names, systhist, nominalhist):
+        det_weights, _, _ = self._detector_systematics(parameter_names, systhist, nominalhist)
+        _, xsec_weights, flux_weights = super(DetectorFluxAndSplineSystematics, self).__call__(parameter_names, systhist, nominalhist)
+        return det_weights, xsec_weights, flux_weights
+
+    @property
+    def parameter_names(self):
+        return self._detector_systematics.parameter_names + self._splinesyst.parameter_names + self._fluxsyst.parameter_names
 
 ################################################################################

@@ -50,9 +50,10 @@ cdef class BinnedModel:
     cdef SparseArray _N_sel;
     cdef _flux_weights;
     cdef _xsec_weights;
+    cdef _det_weights;
     cdef list _parnames;
     cdef vector[uint64_t] _obs;
-    def __init__(self, parnames, N_sel, obs, flux_weights=None, xsec_weights=None):
+    def __init__(self, parnames, N_sel, obs, flux_weights=None, xsec_weights=None, det_weights=None):
         self._parnames = parnames
         self._obs = obs
         #self._shape = N_sel.array().shape()
@@ -63,13 +64,16 @@ cdef class BinnedModel:
         if xsec_weights is None:
             xsec_weights = lambda x: _identity(self._N_sel.shape())
         self._xsec_weights = xsec_weights
+        if det_weights is None:
+            det_weights = lambda x: _identity(self._N_sel.shape())
+        self._det_weights = det_weights
         return
 
     def __call__(self, pars):
         return self.eval(pars)
 
     cdef eval(self, pars):
-        return self._xsec_weights(pars) * (self._flux_weights(pars) * self._N_sel)
+        return self._det_weights(pars) * (self._xsec_weights(pars) * (self._flux_weights(pars) * self._N_sel))
 
     def observable(self, pars):
         return self.eval(pars).project(self._obs)
@@ -92,10 +96,11 @@ cdef class BinnedModelWithOscillation:
     cdef _prob;
     cdef _flux_weights;
     cdef _xsec_weights;
+    cdef _det_weights;
     cdef _osc_flux_weights;
     cdef list _parnames;
 
-    def __init__(self, parnames, N_sel, N_nosel, obs, enudim, flavdim, detdim, detdist, flux_weights=None, xsec_weights=None, probabilitycalc=None, oscparmode=OscParMode.SINSQTHETA):
+    def __init__(self, parnames, N_sel, N_nosel, obs, enudim, flavdim, detdim, detdist, flux_weights=None, xsec_weights=None, det_weights=None, probabilitycalc=None, oscparmode=OscParMode.SINSQTHETA):
         self._parnames = parnames
         self._shape = N_sel.array().shape()
         self._eff = N_sel.array() / N_nosel.array()
@@ -116,6 +121,9 @@ cdef class BinnedModelWithOscillation:
         if xsec_weights is None:
             xsec_weights = lambda x: _identity(self._shape)
         self._xsec_weights = xsec_weights
+        if det_weights is None:
+            det_weights = lambda x: _identity(self._shape)
+        self._det_weights = det_weights
         self._osc_flux_weights = OscFluxWeights(N_nosel, enudim, flavdim, detdim, self._prob)
         return
 
@@ -123,7 +131,7 @@ cdef class BinnedModelWithOscillation:
         return self.eval(pars)
 
     cdef eval(self, pars):
-        return self._xsec_weights(pars) * self._eff * self._osc_flav_rotation(pars, self._flux_weights(pars) * self.N_nosel)
+        return self._det_weights(pars) * (self._xsec_weights(pars) * (self._eff * self._osc_flav_rotation(pars, self._flux_weights(pars) * self.N_nosel)))
         #return self._xsec_weights(pars) * (self._eff * (self._osc_flux_weights(pars) * (self._flux_weights(pars) * self.N_nosel)))
         # avoid unneccessary new copies
         #cdef SparseArray r = self._flux_weights(pars) * self.N_nosel
