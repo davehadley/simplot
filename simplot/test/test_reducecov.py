@@ -78,8 +78,37 @@ class TestConditional(unittest.TestCase):
             expectedmu = [m2 + cor*(s2/s1)*(x1-m1)]
             expectedcov = np.array([[(1.0 - cor**2)*s2**2]])
             self._check_result(rg, expectedmu, expectedcov)
-
         return
+
+    def test_multivariate(self):
+        for cor in np.linspace(0.0, 0.99, num=10):
+            for Nrows in xrange(2, 10):
+                mu, cov = self._create_cov_mu(Nrows, cor)
+                N1 = Nrows / 2
+                N2 = Nrows - N1
+                S11 = cov[0:N1, 0:N1]
+                S12 = cov[0:N1, N1:]
+                S22 = cov[N1:, N1:]
+                S21 = cov[N1:, 0:N1]
+                mu1 = mu[0:N1]
+                mu2 = mu[N1:]
+                x = np.array([np.random.normal(loc=mu[ii], scale=np.sqrt(cov[ii,ii])) for ii in xrange(N2)])
+                expectedmu = mu1 + np.dot(S12, np.dot(np.linalg.inv(S22), (x - mu2)))
+                expectedcov = S11 - np.dot(S12, np.dot(np.linalg.inv(S22), S21))
+                rg = ReducedGaussian(range(Nrows), mu, cov, conditional=dict(zip(range(N1, Nrows), x)))
+                self._check_result(rg, expectedmu, expectedcov)
+
+    def _create_cov_mu(self, Nrows, cor):
+        cov = np.zeros(shape=(Nrows, Nrows))
+        for ii, jj in itertools.product(xrange(Nrows), repeat=2):
+            s1 = ii + 1
+            s2 = jj + 1
+            if ii == jj:
+                cov[ii,jj] = s1 * s2
+            else:
+                cov[ii,jj] = cor * s1 * s2
+        mu = np.sqrt(np.diag(cov))
+        return mu, cov
 
     def _check_result(self, reducedgaussian, expectedmu, expectedcov):
         rg = reducedgaussian
