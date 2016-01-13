@@ -65,7 +65,7 @@ class ReduceMeanVector:
             mu2 = np.array([mu[ii] for ii in indices2])
             x = np.array(observed)
             M22 = _strip_multiple_row_and_col(indices1, cov)
-            M12 = np.array([[cov[i1, i2] for i1 in indices1] for i2 in indices2])
+            M12 = np.array([[cov[i1, i2] for i2 in indices2] for i1 in indices1])
             mu = mu1 +  np.dot(M12, np.dot(np.linalg.inv(M22),(x - mu2)))
         return mu
 
