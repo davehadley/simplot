@@ -6,8 +6,12 @@ class ReducedGaussian:
     def __init__(self, parameter_names, mu, cov, marginalise=[], conditional={}):
         mindices = self._get_indices(marginalise, parameter_names)
         cindices = self._get_indices(conditional.keys(), parameter_names)
+        #input indices must be sorted
+        mindices.sort()
+        cindices.sort()
+        observed = [conditional[parameter_names[ci]] for ci in cindices]
         self._parameter_names = [p for p in parameter_names if p not in marginalise and p not in conditional]
-        self._mu = ReduceMeanVector()(mu, cov, marginalise=mindices, conditional=cindices)
+        self._mu = ReduceMeanVector()(mu, cov, marginalise=mindices, conditional=cindices, observed=observed)
         self._cov = ReduceCovarianceMatrix()(cov, marginalise=mindices, conditional=cindices)
         return
 
@@ -47,15 +51,22 @@ class ReduceCovarianceMatrix:
 ################################################################################
 
 class ReduceMeanVector:
-    def __call__(self, mu, cov, marginalise=[], conditional=[]):
-        return self._reduce_mean_vector(mu, cov, marginalise, conditional)
+    def __call__(self, mu, cov, marginalise=[], conditional=[], observed=[]):
+        return self._reduce_mean_vector(mu, cov, marginalise, conditional, observed)
 
-    def _reduce_mean_vector(self, mu, cov, marginalise, conditional):
+    def _reduce_mean_vector(self, mu, cov, marginalise, conditional, observed):
         if marginalise:
             mu = [x for ii, x in enumerate(mu) if ii not in marginalise]
             conditional = _update_rows_and_columns(marginalise, conditional)
         if conditional:
-            pass
+            indices1 = [ii for ii in xrange(len(mu)) if ii not in conditional]
+            indices2 = conditional
+            mu1 = np.array([mu[ii] for ii in indices1])
+            mu2 = np.array([mu[ii] for ii in indices2])
+            x = np.array(observed)
+            M22 = _strip_multiple_row_and_col(indices1, cov)
+            M12 = np.array([[cov[i1, i2] for i1 in indices1] for i2 in indices2])
+            mu = mu1 +  np.dot(M12, np.dot(np.linalg.inv(M22),(x - mu2)))
         return mu
 
 ################################################################################
@@ -86,8 +97,8 @@ def _strip_row_and_col(n, m):
     return out
 
 def _update_rows_and_columns(removed, indices):
-    removed = list(sorted(removed))
-    indices = list(sorted(indices))
+    removed = list(removed)
+    indices = list(indices)
     while len(removed) > 0:
         r = removed.pop()
         #update indices
