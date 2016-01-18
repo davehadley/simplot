@@ -61,7 +61,7 @@ class OscillationParametersPrior(CombinedPrior):
                 p = UniformPrior([p], [val], range_=[(-math.pi, math.pi)], seed=seed)
             elif p == type(values).THETA13 and not usereactorconstraint:
                 p = UniformPrior([p], [val], range_=[(-math.pi, math.pi)], seed=seed)
-            elif p == type(values).SINSQ2THETA13 and not usereactorconstraint:
+            elif (p == type(values).SINSQ2THETA13 or p == type(values).SINSQTHETA13) and not usereactorconstraint:
                 p = UniformPrior([p], [val], range_=[(0.0, 1.0)], seed=seed)
             else:
                 p = GaussianPrior([p], mu=[val], sigma=[err], seed=seed)

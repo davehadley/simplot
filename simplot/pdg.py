@@ -57,7 +57,7 @@ class PdgNeutrinoOscillationParameters(object):
         sinsq_theta12 = math.sin(theta12)**2
 
         sinsq_theta12_errors = 0.01609
-        sinsq_theta23_errors = 0.03
+        sinsq_theta23_errors = 0.0675 # gives approximately equal to P(sinsq_2theta23 > 0.95) = 90%
         sinsq_theta13_errors = 0.0026
 
         #store values
