@@ -4,6 +4,7 @@ from Cython.Build import cythonize
 from Cython.Distutils import build_ext
 
 import os
+import numpy as np
 
 os.environ["CC"] = "g++"
 os.environ["CXX"] = "g++"
@@ -11,7 +12,7 @@ os.environ["CXX"] = "g++"
 language = "c++"
 extra_compile_args=["-std=c++11", "-O3"]
 extra_link_args=["-std=c++11", "-O3"]
-
+include_dirs = [np.get_include()]
 
 modules = [Extension("simplot.rootplot.cmerge",
                      ["simplot/rootplot/cmerge.pyx"],
@@ -30,41 +31,49 @@ modules = [Extension("simplot.rootplot.cmerge",
                      extra_link_args=extra_link_args),
            Extension("simplot.sparsehist.sparsehist",
                      ["simplot/sparsehist/unordered_map.pxd", "simplot/sparsehist/sparsehist.pxd", "simplot/sparsehist/sparsehist.pyx"],
+                     include_dirs=include_dirs,
                      language = language,
                      extra_compile_args=extra_compile_args,
                      extra_link_args=extra_link_args),
            Extension("simplot.binnedmodel.model",
                      ["simplot/binnedmodel/model.pyx"],
+                     include_dirs=include_dirs,
                      language = language,
                      extra_compile_args=extra_compile_args,
                      extra_link_args=extra_link_args),
            Extension("simplot.binnedmodel.fluxweights",
                  ["simplot/binnedmodel/fluxweights.pyx"],
+                     include_dirs=include_dirs,
                  language = "c++",
                      extra_compile_args=["-std=c++11", "-O3"],
                      extra_link_args=["-std=c++11", "-O3"]),
            Extension("simplot.binnedmodel.xsecweights",
                  ["simplot/binnedmodel/xsecweights.pyx"],
+                     include_dirs=include_dirs,
                  language = "c++",
                      extra_compile_args=["-std=c++11", "-O3"],
                      extra_link_args=["-std=c++11", "-O3"]),
            Extension("simplot.binnedmodel.simplemodelwithosc",
                      ["simplot/binnedmodel/simplemodelwithosc.pyx"],
+                     include_dirs=include_dirs,
                      language = language,
                      extra_compile_args=extra_compile_args,
                      extra_link_args=extra_link_args),
            Extension("simplot.fit.mcmc.metropolishastings",
                      ["simplot/fit/mcmc/metropolishastings.pyx"],
+                     include_dirs=include_dirs,
                      language = language,
                      extra_compile_args=extra_compile_args,
                      extra_link_args=extra_link_args),
            Extension("simplot.fit.mcmc.proposalfunc",
                      ["simplot/fit/mcmc/proposalfunc.pyx"],
+                     include_dirs=include_dirs,
                      language = language,
                      extra_compile_args=extra_compile_args,
                      extra_link_args=extra_link_args),
            Extension("simplot.fit.mcmc.io",
                      ["simplot/fit/mcmc/io.pyx"],
+                     include_dirs=include_dirs,
                      language = language,
                      extra_compile_args=extra_compile_args,
                      extra_link_args=extra_link_args),
