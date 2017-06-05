@@ -899,6 +899,15 @@ class DivideByBinWidth:
         self.flag = flag
         self.scale = scale
 
+###############################################################################
+
+class Profile:
+    ERROR_MEAN = ""
+    ERROR_STDEV = "s"
+    def __init__(self, flag=True, erroroption=""):
+        self.flag = flag
+        self.erroroption = erroroption
+        
 ###############################################################################    
     
 _allValidOptionsTypes = set([EventWeight, 

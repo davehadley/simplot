@@ -213,6 +213,7 @@ class TreePainter:
         userCutList = _findAllOptions(drawoptions.Cut, options, default=[drawoptions.Cut("")])
         userCut = drawoptions.Cut.mergeListOfCuts(userCutList)
         eventWeight = _findOption(drawoptions.EventWeight, options, default=drawoptions.EventWeight(""))
+        profile = _findOption(drawoptions.Profile, options, default=drawoptions.Profile(False))        
         for name,splitCut in splitDataset:
             histogram = None
             #histName = "hDummy"
@@ -243,12 +244,16 @@ class TreePainter:
                 fullCut = "("+ews+")*("+fullCut+")"
             elif len(ews):
                 fullCut = ews
+            #get option string
+            fullOption = ""
+            if profile.flag:
+                fullOption += "prof" + profile.erroroption
             #create histogram by calling the tree Draw command
             fullCommand = command + ">>" + histName
             if isinstance(binning, drawoptions.AutoBinning):
                 fullCommand += "({0})".format(binning.getNBins())
             self.dummyCanv.cd()
-            self.tree.Draw(fullCommand, fullCut)
+            self.tree.Draw(fullCommand, fullCut, fullOption)
             if not histogram:
                 #retrieve the histogram
                 histogram = ROOT.gPad.GetPrimitive(histName)
