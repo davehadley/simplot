@@ -58,7 +58,7 @@ def makeproject(filename, name="", oaanalysis=False):
 def makeproject_new_process(filename, name="", oaanalysis=False):
     '''As makeproject above but does the compilation in a separate process.'''
     import subprocess
-    cmd = ["python", "-m", "simplot.rootplot.makeproject", filename, "--name=\"%s\"" % name]
+    cmd = ["python", "-m", "simplot.rootplot.makeproject", filename, "--name", name]
     if oaanalysis:
         cmd.append("--oaanalysis")
     subprocess.check_call(cmd)
