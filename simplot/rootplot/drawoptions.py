@@ -909,6 +909,21 @@ class Profile:
         self.erroroption = erroroption
         
 ###############################################################################    
+
+class HistogramDrawOption:
+    def __init__(self, drawoptions={}):
+        self.drawoptions = dict(drawoptions)
+    
+    def __contains__(self, name):
+        return name in self.drawoptions
+    
+    def __iter__(self):
+        return iter(self.drawoptions)
+
+    def __getitem__(self, key):
+        return self.drawoptions[key]
+        
+###############################################################################    
     
 _allValidOptionsTypes = set([EventWeight, 
                              Cut, 

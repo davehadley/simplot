@@ -221,7 +221,10 @@ class TreePainter:
             if binning and binning.getBinningArray():
                 nBins = binning.getNBins()
                 array = binning.getBinningArray()
-                histogram = ROOT.TH1D(histName, name,nBins,array)
+                if profile.flag:
+                    histogram = ROOT.TProfile(histName, name, nBins, array, profile.erroroption)
+                else:
+                    histogram = ROOT.TH1D(histName, name,nBins,array)
             #get cut string
             fullCut = None
             scs = splitCut.getCutString()
@@ -867,11 +870,14 @@ class HistogramCollectionPainter:
         MC is drawn as a line.
         """
         treatAsData = self._findOption(drawoptions.TreatAsData, default=drawoptions.TreatAsData())
+        histogramDrawOption = self._findOption(drawoptions.HistogramDrawOption, default=drawoptions.HistogramDrawOption())        
         self.drawnHistograms = OrderedDict()
         for name, hist in reversed(self.histCol):
             #print "drawing",key,hist,hist.GetEntries()
             opts = ["SAME"]
-            if name in treatAsData:
+            if name in histogramDrawOption:
+                opts.append(histogramDrawOption[name])
+            elif name in treatAsData:
                 opts.append("E1")
             else:
                 opts.append("HIST")
@@ -933,12 +939,15 @@ class HistogramCollectionPainter:
         (to avoid covering up the smaller histograms beneath them.
         """
         treatAsData = self._findOption(drawoptions.TreatAsData, default=drawoptions.TreatAsData())
+        histogramDrawOption = self._findOption(drawoptions.HistogramDrawOption, default=drawoptions.HistogramDrawOption())        
         #now draw the stacked histograms
         self.drawnHistograms = OrderedDict()
         for name in reversed(self.orderedNames):
             hist = self.stackedCol[name]
             opts = ["SAME"]
-            if name in treatAsData:
+            if name in histogramDrawOption:
+                opts.append(histogramDrawOption[name])
+            elif name in treatAsData:
                 opts.append("E1")
             else:
                 opts.append("HIST")
