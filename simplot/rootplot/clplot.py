@@ -1,10 +1,11 @@
 from argparse import ArgumentParser
 from collections import OrderedDict
 import glob
+import os
 
 import ROOT
 
-from simplot.rootplot.drawtools import TreePainter, HistogramCollectionPainter
+from simplot.rootplot.drawtools import MultiTreePainter, TreePainter, HistogramCollectionPainter
 from simplot.rootplot.drawoptions import *
 
 def parsecml():
@@ -17,6 +18,7 @@ def parsecml():
     parser.add_argument("-t", "--tree", help="Name of input tree.", type=str, default="ntuple")
     parser.add_argument("-r", "--root-draw-opt", help="ROOT TH1 draw option", type=str, default=None)
     parser.add_argument("-o", "--output", help="Output file.", type=str, default=None)
+    parser.add_argument("--labels", help="A comma separated list of dataset labels", type=str, default=None)
     parser.add_argument("input_files", help="A list of input files.", type=str, nargs="+")
     return parser.parse_args()
 
@@ -58,25 +60,51 @@ def builddrawoptions(args):
         result.append(HistogramDrawOption(str_to_dict(args.root_draw_opt)))
     return result
 
-def plot(tree, args):
+def plot(datasets, treename, plotcmd, drawoptions, output=None):
+    hist = _makehistograms(datasets, treename, plotcmd, drawoptions)
+    _makeplot(hist, drawoptions, output)
+    return
+
+def _makehistograms(datasets, treename, plotcmd, drawoptions):
     name = "plot"
-    painter = TreePainter(tree=tree)
-    drawoptions = builddrawoptions(args)
-    hist = painter.makeHistograms(name, args.plot, args.plot, *drawoptions)
+    painter = MultiTreePainter(datasets, treeName=treename)
+    hist = painter.makeHistograms(name, plotcmd, plotcmd, *drawoptions)
+    hist._painter = painter # prevent automatic deletion of objects
+    return hist
+
+def _makeplot(hist, drawoptions, output):
     histpainter = HistogramCollectionPainter()
     canvas = histpainter.paint(hist, *drawoptions)
-    if args.output:
-        canvas.SaveAs(args.output)
+    if output:
+        canvas.SaveAs(output)
     else:
         raw_input("waiting")
     return
+
+def expandfilelist(pattern):
+    return glob.glob(
+        os.path.expandvars(
+            os.path.expanduser(pattern)
+        )
+    )
+
+def splitdatasets(args):
+    if args.labels:
+        datasets = {label : expandfilelist(fpattern) for label, fpattern in zip(args.labels.split(","), args.input_files)}
+    else:
+        flist = []
+        for fname in args.input_files:
+            flist.extend(expandfilelist(fname))
+        datasets = {"" : flist }
+    return datasets
 
 def main():
     args = parsecml()
     if args.output:
         ROOT.gROOT.SetBatch(True)
-    tree = loadtree(args.input_files, args.tree)
-    plot(tree, args)
+    datasets = splitdatasets(args)
+    drawoptions = builddrawoptions(args)
+    plot(datasets, args.tree, args.plot, drawoptions, output=args.output)
     return
 
 if __name__ == "__main__":
