@@ -339,6 +339,21 @@ class FileObjectTupleGetter:
 
 ###############################################################################
 
+class ProcessIterable(object):
+    def __init__(self, iterable, alg):
+        self._iterable = iterable
+        self._alg = alg
+
+    def run(self):
+        self._alg.begin()
+        # we have no files, give the algorithm None
+        self._alg.file(None)
+        for entry in self._iterable:
+            self._alg.event(entry)
+        self._alg.end()
+
+###############################################################################
+
 class ProcessTree(object):
     def __init__(self, infilelist, treename, alg, n_max=None, usefasttree=True, treegetter=None):
         '''Iterates over the input tree and applies the provided algorithm.

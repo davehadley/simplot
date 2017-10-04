@@ -54,3 +54,28 @@ def makeproject(filename, name="", oaanalysis=False):
     #load hack scripts
     lock.release()
     return outputPath
+
+def makeproject_new_process(filename, name="", oaanalysis=False):
+    '''As makeproject above but does the compilation in a separate process.'''
+    import subprocess
+    cmd = ["python", "-m", "simplot.rootplot.makeproject", filename, "--name", name]
+    if oaanalysis:
+        cmd.append("--oaanalysis")
+    subprocess.check_call(cmd)
+    return makeproject(filename, name, oaanalysis)
+
+def _parsecml():
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("fname", help="Input file name")
+    parser.add_argument("--name", help="Name of library file to generate.", type=str, default="")
+    parser.add_argument("--oaanalysis", help="oaAnalysis mode.", action="store_true")
+    return parser.parse_args() 
+
+def main():
+    args = _parsecml()
+    makeproject(args.fname, args.name, args.oaanalysis)
+    return
+
+if __name__ == "__main__":
+    main()

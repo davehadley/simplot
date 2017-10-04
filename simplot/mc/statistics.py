@@ -138,6 +138,13 @@ class Covariance(object):
             rms = safedivide(rms, mean2)
         return rms
 
+    def correlation(self):
+        cov = self.eval()
+        cor = np.zeros(shape=cov.shape)
+        for ii, jj in itertools.product(xrange(cor.shape[0]), xrange(cor.shape[1])):
+            cor[ii, jj] = cov[ii, jj] / np.sqrt(cov[ii, ii] * cov[jj, jj])
+        return cor
+
     def err(self):
         cov = self.eval()
         result = np.copy(cov)

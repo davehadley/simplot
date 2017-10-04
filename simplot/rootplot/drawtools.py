@@ -213,6 +213,7 @@ class TreePainter:
         userCutList = _findAllOptions(drawoptions.Cut, options, default=[drawoptions.Cut("")])
         userCut = drawoptions.Cut.mergeListOfCuts(userCutList)
         eventWeight = _findOption(drawoptions.EventWeight, options, default=drawoptions.EventWeight(""))
+        profile = _findOption(drawoptions.Profile, options, default=drawoptions.Profile(False))        
         for name,splitCut in splitDataset:
             histogram = None
             #histName = "hDummy"
@@ -220,7 +221,10 @@ class TreePainter:
             if binning and binning.getBinningArray():
                 nBins = binning.getNBins()
                 array = binning.getBinningArray()
-                histogram = ROOT.TH1D(histName, name,nBins,array)
+                if profile.flag:
+                    histogram = ROOT.TProfile(histName, name, nBins, array, profile.erroroption)
+                else:
+                    histogram = ROOT.TH1D(histName, name,nBins,array)
             #get cut string
             fullCut = None
             scs = splitCut.getCutString()
@@ -243,12 +247,16 @@ class TreePainter:
                 fullCut = "("+ews+")*("+fullCut+")"
             elif len(ews):
                 fullCut = ews
+            #get option string
+            fullOption = ""
+            if profile.flag:
+                fullOption += "prof" + profile.erroroption
             #create histogram by calling the tree Draw command
             fullCommand = command + ">>" + histName
             if isinstance(binning, drawoptions.AutoBinning):
                 fullCommand += "({0})".format(binning.getNBins())
             self.dummyCanv.cd()
-            self.tree.Draw(fullCommand, fullCut)
+            self.tree.Draw(fullCommand, fullCut, fullOption)
             if not histogram:
                 #retrieve the histogram
                 histogram = ROOT.gPad.GetPrimitive(histName)
@@ -394,6 +402,64 @@ class TreePainter:
             histogram.Sumw2()
             histCol.addHistogram(name,histogram)
         return histCol
+
+###############################################################################
+
+class MultiTreePainter:
+    def __init__(self, datasets, treeName=None):
+        """
+        :param datasets: A dictionary-like with key=dataset name and value=tree or filename or filelist.
+        :type datasets: dict
+        """
+        self._datasets = datasets
+        self._painters = {}
+        for label, value in datasets.iteritems():
+            if isinstance(value, basestring):
+                # single input file
+                self._painters[label] = TreePainter([value], treeName=treeName)
+            else:
+                self._painters[label] = TreePainter(value, treeName=treeName)
+
+    def paint(self, name, title, command, *options):
+        """Create histograms and paint them.
+
+        :param name: the name of the returned canvas.
+        :type name: str
+        :param title: the title of the returned canvas.
+        :type title: str
+        :param command: the draw command (in the format of the ROOT.TTree.Draw mini-language).
+        :type command: str
+        :param options: optional number of draw options (see drawoptions module).
+        :returns: the plot (ROOT.TCanvas).
+        """
+        _checkAllOptionsAreValid(options)
+        self.histCol = self._generateHistograms(name, title, command, *options)
+        self.histPainter = HistogramCollectionPainter()
+        self.canv = self.histPainter.paint(self.histCol, *options)
+        return self.canv
+
+    def _generateHistograms(self, name, title, command,*options):
+        self.histCol = HistogramCollection(name, title)
+        for label, p in self._painters.iteritems():
+            hc = p._generateHistograms(name, title, command,*options)
+            for key, h in hc:
+                self.histCol.addHistogram(label + " " + key, h)
+        return self.histCol
+
+    def makeHistograms(self, name, title, command, *options):
+        """Create histograms but does not draw them.
+
+        :param name: the name of the returned canvas.
+        :type name: str
+        :param title: the title of the returned canvas.
+        :type title: str
+        :param command: the draw command (in the format of the ROOT.TTree.Draw mini-language).
+        :type command: str
+        :param options: optional number of draw options (see drawoptions module).
+        :returns: the histogram collection.
+        """
+        return self._generateHistograms(name, title, command,*options)
+
     
 ###############################################################################
 
@@ -862,11 +928,14 @@ class HistogramCollectionPainter:
         MC is drawn as a line.
         """
         treatAsData = self._findOption(drawoptions.TreatAsData, default=drawoptions.TreatAsData())
+        histogramDrawOption = self._findOption(drawoptions.HistogramDrawOption, default=drawoptions.HistogramDrawOption())        
         self.drawnHistograms = OrderedDict()
         for name, hist in reversed(self.histCol):
             #print "drawing",key,hist,hist.GetEntries()
             opts = ["SAME"]
-            if name in treatAsData:
+            if name in histogramDrawOption:
+                opts.append(histogramDrawOption[name])
+            elif name in treatAsData:
                 opts.append("E1")
             else:
                 opts.append("HIST")
@@ -928,12 +997,15 @@ class HistogramCollectionPainter:
         (to avoid covering up the smaller histograms beneath them.
         """
         treatAsData = self._findOption(drawoptions.TreatAsData, default=drawoptions.TreatAsData())
+        histogramDrawOption = self._findOption(drawoptions.HistogramDrawOption, default=drawoptions.HistogramDrawOption())        
         #now draw the stacked histograms
         self.drawnHistograms = OrderedDict()
         for name in reversed(self.orderedNames):
             hist = self.stackedCol[name]
             opts = ["SAME"]
-            if name in treatAsData:
+            if name in histogramDrawOption:
+                opts.append(histogramDrawOption[name])
+            elif name in treatAsData:
                 opts.append("E1")
             else:
                 opts.append("HIST")

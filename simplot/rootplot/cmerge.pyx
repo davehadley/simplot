@@ -5,8 +5,8 @@ import numpy as np
 cimport numpy as np
 
 def cmerge(outfilename, treename, flist=None):
-    flist = [ROOT.TFile(f) for f in flist]
-    tlist = [f.Get(treename) for f in flist]
+    flist = [_openrootfile(f) for f in flist]
+    tlist = [_gettree(f, treename) for f in flist]
     itree = tlist[0]
     for t in tlist[1:]:
         itree.AddFriend(t)
@@ -30,3 +30,16 @@ def cmerge(outfilename, treename, flist=None):
     return
 
 #merge("test.root", "titus_weights", glob.glob("weights_*.root"))
+
+def _openrootfile(fname):
+    # check we were successful
+    f = ROOT.TFile(fname, "READ")
+    if not (f and f.IsOpen()):
+        raise ValueError("unable to open file", fname)
+    return f
+
+def _gettree(tfile, treename):
+    tree = tfile.Get(treename)
+    if not tree:
+        raise ValueError("unable to find tree in file", treename, tfile.GetName())
+    return tree
