@@ -402,6 +402,64 @@ class TreePainter:
             histogram.Sumw2()
             histCol.addHistogram(name,histogram)
         return histCol
+
+###############################################################################
+
+class MultiTreePainter:
+    def __init__(self, datasets, treeName=None):
+        """
+        :param datasets: A dictionary-like with key=dataset name and value=tree or filename or filelist.
+        :type datasets: dict
+        """
+        self._datasets = datasets
+        self._painters = {}
+        for label, value in datasets.iteritems():
+            if isinstance(value, basestring):
+                # single input file
+                self._painters[label] = TreePainter([value], treeName=treeName)
+            else:
+                self._painters[label] = TreePainter(value, treeName=treeName)
+
+    def paint(self, name, title, command, *options):
+        """Create histograms and paint them.
+
+        :param name: the name of the returned canvas.
+        :type name: str
+        :param title: the title of the returned canvas.
+        :type title: str
+        :param command: the draw command (in the format of the ROOT.TTree.Draw mini-language).
+        :type command: str
+        :param options: optional number of draw options (see drawoptions module).
+        :returns: the plot (ROOT.TCanvas).
+        """
+        _checkAllOptionsAreValid(options)
+        self.histCol = self._generateHistograms(name, title, command, *options)
+        self.histPainter = HistogramCollectionPainter()
+        self.canv = self.histPainter.paint(self.histCol, *options)
+        return self.canv
+
+    def _generateHistograms(self, name, title, command,*options):
+        self.histCol = HistogramCollection(name, title)
+        for label, p in self._painters.iteritems():
+            hc = p._generateHistograms(name, title, command,*options)
+            for key, h in hc:
+                self.histCol.addHistogram(label + " " + key, h)
+        return self.histCol
+
+    def makeHistograms(self, name, title, command, *options):
+        """Create histograms but does not draw them.
+
+        :param name: the name of the returned canvas.
+        :type name: str
+        :param title: the title of the returned canvas.
+        :type title: str
+        :param command: the draw command (in the format of the ROOT.TTree.Draw mini-language).
+        :type command: str
+        :param options: optional number of draw options (see drawoptions module).
+        :returns: the histogram collection.
+        """
+        return self._generateHistograms(name, title, command,*options)
+
     
 ###############################################################################
 
