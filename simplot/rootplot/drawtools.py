@@ -914,10 +914,17 @@ class HistogramCollectionPainter:
         return
     
     def _drawHistograms2D(self):
+        frameRange = self._findOption(drawoptions.FrameRange, default=drawoptions.FrameRange())
+        zMin = frameRange.getZMin()
+        zMax = frameRange.getZMax()        
         self.drawnHistograms = OrderedDict()
         for name,hist in self.histCol:
             opts = ["SAME","COLZ"]
             hist.Draw(",".join(opts))
+            if zMin != drawoptions.FrameRange.auto:
+                hist.SetMinimum(zMin)
+            if zMax != drawoptions.FrameRange.auto:
+                hist.SetMaximum(zMax)
             self.drawnHistograms[name] = hist
         return
         
