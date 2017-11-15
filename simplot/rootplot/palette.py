@@ -152,14 +152,14 @@ class ColorGradient:
       
     """
     @staticmethod
-    def setPalette(red, green, blue):
+    def setPalette(red, green, blue, num=19):
         r = numpy.array(red)
         g = numpy.array(green)
         b = numpy.array(blue)
         nStops = len(red)
         uniform = [ float(i)/float(nStops-1) for i in xrange(nStops) ]
         stop = numpy.array(uniform)
-        result = numpy.array(ROOT.TColor.CreateGradientColorTable(len(stop), stop, r, g, b, 19))
+        result = numpy.array(ROOT.TColor.CreateGradientColorTable(len(stop), stop, r, g, b, num))
         return
     
     @staticmethod
