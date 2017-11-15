@@ -879,8 +879,9 @@ class Normalisation:
     mcToData = "mcToData"
     unitArea = "unitArea"
     totalUnitArea = "totalUnitArea"
+    unitPeak = "unitPeak"
 
-    ALL_MODES = (noNormalisation, mcToData, unitArea, totalUnitArea)
+    ALL_MODES = (noNormalisation, mcToData, unitArea, totalUnitArea, unitPeak)
 
     def __init__(self, mode):
         self.mode = mode

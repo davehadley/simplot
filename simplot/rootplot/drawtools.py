@@ -843,6 +843,13 @@ class HistogramCollectionPainter:
                 if n>0:
                     scale = 1./n
                 h.Scale(scale)
+        elif mode == drawoptions.Normalisation.unitPeak:
+            for k,h in self.histCol:
+                n = h.GetBinContent(h.GetMaximumBin())
+                scale = 0.0
+                if n>0:
+                    scale = 1./n
+                h.Scale(scale)
         else:
             raise Exception("invalid normalisation option",norm)
         return
