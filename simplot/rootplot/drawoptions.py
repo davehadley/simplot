@@ -801,7 +801,7 @@ class Format(BaseFormat):
         self.dataColors = itertools.chain( [1],self.colors )
         self.marker = itertools.cycle(xrange(22,35))
         self.dataMarker = itertools.cycle(xrange(20,35))
-        self.fillStyle = itertools.cycle([3145, 3154, 3105, 3195])
+        self.fillStyle = itertools.cycle([1001]) #itertools.cycle([3145, 3154, 3105, 3195])
         self.lineWidth = lineWidth
         if dashedLines:
             self.lineStyle = itertools.cycle([1,3,4,6,2])

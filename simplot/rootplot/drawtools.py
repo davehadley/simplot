@@ -727,6 +727,8 @@ class HistogramCollectionPainter:
         canv = ROOT.TCanvas(self.histCol.getName(), self.histCol.getTitle(),canvasSize.getX(),canvasSize.getY())
         frameTitle = axisLabels.getTitle()
         xMin,yMin,xMax,yMax = self.frameLimits
+        if axisScale.isLogY() and yMin <= 0.0:
+            yMin = 0.1 # otherwise the plot will not display correctly
         frame = canv.DrawFrame(xMin,yMin,xMax,yMax,frameTitle)
         if frameBinLabels:
             self._setFrameBinLabels(frameBinLabels, frame)
@@ -896,7 +898,8 @@ class HistogramCollectionPainter:
         """
         treatAsData = self._findOption(drawoptions.TreatAsData, default=drawoptions.TreatAsData())
         format = self._findOption(drawoptions.BaseFormat, default=drawoptions.Format())
-        for name,hist in self.drawnHistograms.iteritems():
+        # must interate in reverse order because histograms are always drawn in reverse order
+        for name,hist in reversed(self.drawnHistograms.items()):
             isData = name in treatAsData
             format.format(name,hist,isData)
         return
@@ -1042,11 +1045,12 @@ class HistogramCollectionPainter:
             else:
                 xLow,yLow,xHigh,yHigh = self._calculateLegendLimits()
                 opt = "br"
-            #print xLow,yLow,xHigh,yHigh
+            # print xLow,yLow,xHigh,yHigh
             leg = ROOT.TLegend(xLow,yLow,xHigh,yHigh, "", opt)
             leg.SetFillStyle(1001)
             leg.SetFillColor(ROOT.kWhite)
-            for name in self.drawnHistograms.iterkeys():
+            # we always draw histograms in reverse order so we also need to reverse here
+            for name in reversed(self.drawnHistograms.keys()):
                 hist = self.drawnHistograms[name]
                 opt = "LF"
                 if name in treatAsData:

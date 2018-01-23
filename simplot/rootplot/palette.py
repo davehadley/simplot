@@ -26,8 +26,9 @@ class ColorPalette:
     mode_violetGreenOrange = 3
     mode_tetrad = 4
     mode_cbSafe = 5
+    mode_cbSafe2 = 6
     #define default behaviour
-    mode_default = 4
+    mode_default = 6
     
     #red and blue RGB numbers
     rgb_redBlue = [ (202, 0, 32), 
@@ -64,6 +65,27 @@ class ColorPalette:
                    (0xA6,0x4B,0x00),
                    (0x00,0x63,0x63),
                   ]
+
+    # Based on:
+    # http://mkweb.bcgsc.ca/biovis2012
+    # re-odered for best contrast in low num line figures
+    rgb_cbSafe2 = [
+        (73, 0, 146), # 6
+        (255, 109, 182), # 4
+        (146, 0, 0), # 11
+        (0, 73, 73), # 2
+        (36, 255, 36), # 14
+        (109, 182, 255), # 9
+        (219, 209, 0), # 13
+        (0, 109, 219), # 7
+        (0, 146, 146), # 3
+        (182, 109, 255), # 8
+        (146, 73, 0), # 12
+        (255, 109, 182), # 5
+        (182, 219, 255), # 10
+        (255, 255, 109), # 15
+        (0, 0, 0), # 1
+    ]
     
     @staticmethod
     def createPaletteCycle(mode=mode_default):
@@ -97,6 +119,8 @@ class ColorPalette:
             cols = self._convertRgbList(ColorPalette.rgb_tetrad)
         elif mode == ColorPalette.mode_cbSafe:
             cols = self._convertRgbList(ColorPalette.rgb_cbSafe)
+        elif mode == ColorPalette.mode_cbSafe2:
+            cols = self._convertRgbList(ColorPalette.rgb_cbSafe2)
         self.colorList = cols
         self.colorCycle = itertools.cycle(cols)
         
