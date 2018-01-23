@@ -111,6 +111,9 @@ cdef class AdaptiveMetropolisHastingsAlgorithm(MetropolisHastingsAlgorithm):
     cdef np.ndarray _data
     def __init__(self, *args, **kwargs):
         self._period = 10000
+        if "period" in kwargs:
+            self._period = kwargs["period"]
+            del kwargs["period"]
         self._converged = False
         self._save_all = False
         super(AdaptiveMetropolisHastingsAlgorithm, self).__init__(*args, **kwargs)
