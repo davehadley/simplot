@@ -38,7 +38,7 @@ def async_copy_files(flist, timeout=None):
     """
     def operation(f):
         src, dst = f
-        if not os.path.exists(dst) or os.path.getmtime(dst) > os.path.getmtime(dst):
+        if (not os.path.exists(dst)) or os.path.getmtime(src) > os.path.getmtime(dst):
             shutil.copy(src, dst)
         return src, dst
     return ListAsyncOperation(flist, operation, timeout=timeout)
