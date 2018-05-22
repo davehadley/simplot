@@ -30,8 +30,9 @@ class ClusterJob:
     initialiseTime = time.strftime("%Y-%m-%d.%H%M")
     
     def __init__(self, name, queue, cmd, workingDirectory="./", isTest=False, isVerbose=False, isQuiet=False,
-                 memoryLimit=4000,
-                 swapLimit=4000,
+                 memoryLimit=4000, # in MB
+                 swapLimit=4000, # in MB
+                 tmpLimit=1000, # in MB
     ):
         self.cmd = cmd
         self.jobName = name
@@ -45,6 +46,7 @@ class ClusterJob:
         #set memory limits
         self.memoryLimit = memoryLimit # in MB
         self.swapLimit = swapLimit # in MB
+        self.tmpLimit = tmpLimit # in MB
         self.sanitiseInputs()
         
     def __str__(self):
@@ -102,6 +104,7 @@ class ClusterJob:
                    " -o "+self.stdoutFile,
                    "-M "+str(self.memoryLimit),
                    "-v "+str(self.swapLimit),
+                   "-R rusage[tmp=%s]" % self.tmpLimit,
                    ]
         for opt in options:
             print >>fileHandle,"#BSUB",opt
