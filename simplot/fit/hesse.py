@@ -81,7 +81,10 @@ class Hesse:
     def _calculate_second_partial_derivative_matrix(self, func, pos, delta):
         npars = len(pos)
         result = numpy.zeros(shape=(npars, npars), dtype=float)
-        numentries = self._n_choose_r(npars, 2) + npars
+        if npars>1:
+            numentries = self._n_choose_r(npars, 2) + npars
+        else:
+            numentries = 1
         iterdim = self._iterdim(npars)
         if self._verbosity >= Verbosity.PRINT_PROGRESS:
             iterdim = simplot.progress.printprogress("Hesse", numentries, iterdim)
