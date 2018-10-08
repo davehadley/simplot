@@ -19,7 +19,7 @@ class Hesse:
         self._matrix_d2dxdy = None
         self._error_matrix = None
         self._error_stddev = None
-        self._updatedelta = False
+        self._updatedelta = updatedelta
         self._verbosity = verbosity
         self._ignore_errors = ignore_errors
         self._check_inputs()
